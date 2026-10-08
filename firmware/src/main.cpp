@@ -22,24 +22,26 @@
 
 // ---------- Настройки (позже придут с сервера) ----------
 const float SCALE_PCT          = 2.0;    // шкала флюгера: от -2% до +2%
-const float ALERT_PCT          = 1.0;    // порог мигания светодиода
-const unsigned long CAROUSEL_MS = 10000; // смена валюты в авторежиме
 const unsigned long LONG_PRESS_MS = 800; // удержание кнопки = смена режима
+// Приходят в settings ответа сервера (alert_pct, carousel_s); пока значения по умолчанию
+float alertPct          = 1.0;    // порог мигания светодиода, %
+unsigned long carouselMs = 10000; // смена валюты в авторежиме, мс
 
 // ---------- Данные ----------
 struct Currency {
   const char* code;
-  float rate;       // рублей за 1 единицу (KZT, MNT — за 100 единиц)
+  int nominal;      // за сколько единиц валюты дана цена (1 или 100, как у ЦБ)
+  float rate;       // рублей за nominal единиц
   float changePct;  // изменение за сутки, %
 };
 
 // Демо-значения для MVP, не реальные курсы
 Currency currencies[] = {
-  {"CNY", 11.50,  0.42},
-  {"USD", 82.10, -0.35},
-  {"EUR", 95.30,  1.25},
-  {"KZT", 16.20, -0.10},
-  {"MNT",  2.40, -1.60},
+  {"CNY",   1, 11.50,  0.42},
+  {"USD",   1, 82.10, -0.35},
+  {"EUR",   1, 95.30,  1.25},
+  {"KZT", 100, 16.20, -0.10},
+  {"MNT", 100,  2.40, -1.60},
 };
 const int COUNT = sizeof(currencies) / sizeof(currencies[0]);
 
@@ -77,7 +79,8 @@ void showText(const char* msg) {
 
 void showCurrency(int i) {
   Currency &c = currencies[i];
-  snprintf(text, sizeof(text), "%s %.2f %+.2f%%", c.code, c.rate, c.changePct);
+  if (c.nominal == 1) snprintf(text, sizeof(text), "%s %.2f %+.2f%%", c.code, c.rate, c.changePct);
+  else snprintf(text, sizeof(text), "%s/%d %.2f %+.2f%%", c.code, c.nominal, c.rate, c.changePct);
   showText(text);
   targetAngle = angleFor(c.changePct);
   Serial.printf("[%s] %s  ->  angle %d\n", autoMode ? "AUTO" : "MANUAL", text, targetAngle);
@@ -102,7 +105,7 @@ void updateNeedle() {
 void updateLeds() {
   float pct = currencies[current].changePct;
   bool on = true;
-  if (fabs(pct) >= ALERT_PCT) on = (millis() / 300) % 2;
+  if (fabs(pct) >= alertPct) on = (millis() / 300) % 2;
   digitalWrite(LED_UP_PIN,   (pct > 0 && on) ? HIGH : LOW);
   digitalWrite(LED_DOWN_PIN, (pct < 0 && on) ? HIGH : LOW);
 }
@@ -152,7 +155,7 @@ void setup() {
 void loop() {
   updateButton();
 
-  if (autoMode && millis() - lastSwitch >= CAROUSEL_MS) nextCurrency();
+  if (autoMode && millis() - lastSwitch >= carouselMs) nextCurrency();
 
   if (matrix.displayAnimate()) {     // строка доехала до конца
     if (modeMsgPending) {            // после AUTO/MANUAL вернуть валюту
