@@ -1,14 +1,25 @@
 #include <Arduino.h>
 
-// ===== Валютный флюгер — MVP (Работа №1) =====
+// ===== Валютный флюгер =====
 // ESP32 + сервопривод (флюгер) + матрица MAX7219 8x32 + 2 светодиода + кнопка.
-// Сети пока нет: курсы — демо-значения, зашитые в прошивку.
-// На следующих этапах массив currencies будет заполняться ответом сервера.
+// Курсы и настройки раз в 60 с берутся с сервера (GET /api/rates) по Wi-Fi.
+// Пока ответа нет или связь пропала — показываем последние данные (сначала демо) и кадр "no link".
 
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include <ESP32Servo.h>
 #include <MD_Parola.h>
 #include <MD_MAX72xx.h>
 #include <SPI.h>
+
+// Wi-Fi и адрес сервера: свой fluger_config.h (не в git), иначе значения для Wokwi из fluger_config.example.h
+// (имя не config.h: файл с таким именем уже есть в toolchain ESP32)
+#if __has_include("fluger_config.h")
+#include "fluger_config.h"
+#else
+#include "fluger_config.example.h"
+#endif
 
 // ---------- Пины ----------
 #define SERVO_PIN     13
@@ -58,30 +69,39 @@ MD_MAX72XX::fontType_t narrowFont[] PROGMEM = {
   3, 0x4F, 0x49, 0x7F,        // 9
 };
 
-// ---------- Настройки (позже придут с сервера) ----------
+// ---------- Настройки ----------
 const float SCALE_PCT          = 2.0;    // шкала флюгера: от -2% до +2%
 const unsigned long LONG_PRESS_MS = 800; // удержание кнопки = смена режима
-// Приходят в settings ответа сервера (alert_pct, carousel_s); пока значения по умолчанию
+const unsigned long POLL_MS     = 60000; // опрос сервера
+const uint16_t HTTP_TIMEOUT_MS  = 3000;
+// Приходят в settings ответа сервера (alert_pct, carousel_s); до первого ответа — по умолчанию
 float alertPct          = 1.0;    // порог мигания светодиода, %
 unsigned long carouselMs = 10000; // смена валюты в авторежиме, мс
 
 // ---------- Данные ----------
 struct Currency {
-  const char* code;
+  char code[8];
   int nominal;      // за сколько единиц валюты дана цена (1 или 100, как у ЦБ)
   float rate;       // рублей за nominal единиц
   float changePct;  // изменение за сутки, %
 };
 
-// Демо-значения для MVP, не реальные курсы
-Currency currencies[] = {
+// Список валют приходит с сервера. До первого ответа — демо-значения, не реальные курсы.
+const int MAX_CURRENCIES = 10;
+Currency currencies[MAX_CURRENCIES] = {
   {"CNY",   1, 11.50,  0.42},
   {"USD",   1, 82.10, -0.35},
   {"EUR",   1, 95.30,  1.25},
   {"KZT", 100, 16.20, -0.10},
   {"MNT", 100,  2.40, -1.60},
 };
-const int COUNT = sizeof(currencies) / sizeof(currencies[0]);
+int currencyCount = 5;
+
+// ---------- Связь ----------
+bool linkOk = false;             // последний опрос сервера удался
+unsigned long lastPoll = 0;
+bool polledOnce = false;
+wl_status_t wifiPrev = WL_IDLE_STATUS;
 
 // ---------- Объекты ----------
 MD_Parola matrix(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
@@ -99,7 +119,7 @@ unsigned long lastServoStep = 0;
 char text[48];           // строка для лога в Serial
 bool modeMsgPending = false;
 
-char frames[4][16];      // кадры текущей валюты
+char frames[5][16];      // кадры текущей валюты (+ "no link")
 int frameCount = 0;
 int frameIdx = 0;
 char frameText[16];      // то, что сейчас на матрице (MD_Parola хранит указатель)
@@ -147,6 +167,7 @@ void buildFrames(const Currency &c) {
   if (c.changePct > 0)      snprintf(frames[frameCount++], sizeof(frames[0]), "%c%.2f%%", CH_UP, c.changePct);
   else if (c.changePct < 0) snprintf(frames[frameCount++], sizeof(frames[0]), "%c%.2f%%", CH_DOWN, -c.changePct);
   else                      snprintf(frames[frameCount++], sizeof(frames[0]), "0.00%%");
+  if (!linkOk)              snprintf(frames[frameCount++], sizeof(frames[0]), "no link");
 
   // Весь цикл кадров укладываем в carousel_s
   framePause = constrain((long)(carouselMs / frameCount) - FRAME_ANIM_MS, FRAME_PAUSE_MIN, FRAME_PAUSE_MAX);
@@ -163,9 +184,81 @@ void showCurrency(int i) {
 }
 
 void nextCurrency() {
-  current = (current + 1) % COUNT;
+  current = (current + 1) % currencyCount;
   lastSwitch = millis();
   showCurrency(current);
+}
+
+// Один запрос к серверу: курсы и настройки. true — если ответ получен и разобран.
+bool fetchRates() {
+  HTTPClient http;
+  http.setConnectTimeout(HTTP_TIMEOUT_MS);
+  http.setTimeout(HTTP_TIMEOUT_MS);
+  if (!http.begin(SERVER_URL)) return false;
+  int status = http.GET();
+  if (status != HTTP_CODE_OK) {
+    Serial.printf("[net] HTTP %d\n", status);
+    http.end();
+    return false;
+  }
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, http.getString());
+  http.end();
+  if (err) {
+    Serial.printf("[net] JSON: %s\n", err.c_str());
+    return false;
+  }
+
+  JsonArray rates = doc["rates"];
+  if (rates.size() == 0) return false;
+  int n = 0;
+  for (JsonObject r : rates) {
+    if (n >= MAX_CURRENCIES) break;
+    Currency &c = currencies[n++];
+    strlcpy(c.code, r["code"] | "???", sizeof(c.code));
+    c.nominal   = r["nominal"] | 1;
+    c.rate      = r["rate"] | 0.0f;
+    c.changePct = r["change"] | 0.0f;
+  }
+  currencyCount = n;
+
+  JsonObject s = doc["settings"];
+  if (s["alert_pct"].is<float>())  alertPct = s["alert_pct"].as<float>();
+  if (s["carousel_s"].is<float>()) carouselMs = max(2000UL, (unsigned long)(s["carousel_s"].as<float>() * 1000));
+  return true;
+}
+
+// Новые данные или смена состояния связи: пересобрать кадры, не прерывая текущий
+void applyData() {
+  if (current >= currencyCount) current = 0;
+  buildFrames(currencies[current]);
+  targetAngle = angleFor(currencies[current].changePct);
+}
+
+// Wi-Fi подключается сам в фоне; сервер опрашиваем сразу после подключения и затем раз в POLL_MS
+void updateNetwork() {
+  wl_status_t st = WiFi.status();
+  if (st != wifiPrev) {
+    wifiPrev = st;
+    if (st == WL_CONNECTED) Serial.printf("[net] Wi-Fi ok, IP %s\n", WiFi.localIP().toString().c_str());
+    else Serial.printf("[net] Wi-Fi status %d\n", st);
+  }
+
+  if (st != WL_CONNECTED) {
+    polledOnce = false;                // после переподключения опросить сразу
+    if (linkOk) { linkOk = false; applyData(); }
+    return;
+  }
+  if (polledOnce && millis() - lastPoll < POLL_MS) return;
+
+  lastPoll = millis();
+  polledOnce = true;
+  bool ok = fetchRates();
+  Serial.printf("[net] %s: %s\n", SERVER_URL, ok ? "ok" : "no link");
+  if (ok || linkOk) {                  // новые данные или связь пропала
+    linkOk = ok;
+    applyData();
+  }
 }
 
 // Плавный поворот флюгера: 1 градус каждые 15 мс
@@ -225,13 +318,18 @@ void setup() {
   matrix.addChar(CH_UP, arrowUp);
   matrix.addChar(CH_DOWN, arrowDown);
 
-  Serial.println("Valutny fluger: MVP started");
+  Serial.println("Valutny fluger: started");
   showCurrency(current);
   lastSwitch = millis();
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);   // не ждём: подключение идёт в фоне
+  Serial.printf("[net] Wi-Fi: connecting to %s\n", WIFI_SSID);
 }
 
 void loop() {
   updateButton();
+  updateNetwork();
 
   if (matrix.displayAnimate()) {     // кадр въехал, постоял и уехал
     unsigned long cycleMs = frameCount * (framePause + FRAME_ANIM_MS);

@@ -15,3 +15,6 @@ venv/
 # Прочее
 .DS_Store
 Thumbs.db
+
+# Прошивка: свои Wi-Fi и адрес сервера
+firmware/src/fluger_config.h
