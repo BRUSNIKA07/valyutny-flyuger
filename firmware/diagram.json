@@ -16,7 +16,7 @@
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
 
-    [ "matrix1:V+", "esp:5V", "red", [] ],
+    [ "matrix1:VCC", "esp:5V", "red", [] ],
     [ "matrix1:GND", "esp:GND.1", "black", [] ],
     [ "matrix1:DIN", "esp:23", "blue", [] ],
     [ "matrix1:CLK", "esp:18", "orange", [] ],
