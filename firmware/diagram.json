@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "author": "Валютный флюгер",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-max7219-matrix", "id": "matrix1", "top": -150, "left": -60, "attrs": { "chain": "4" } },
+    { "type": "wokwi-servo", "id": "servo1", "top": 40, "left": 220, "attrs": {} },
+    { "type": "wokwi-led", "id": "ledUp", "top": 180, "left": 230, "attrs": { "color": "limegreen" } },
+    { "type": "wokwi-led", "id": "ledDown", "top": 180, "left": 290, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 260, "left": 200, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 260, "left": 260, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-pushbutton", "id": "btn1", "top": 320, "left": 210, "attrs": { "color": "blue" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+
+    [ "matrix1:V+", "esp:5V", "red", [] ],
+    [ "matrix1:GND", "esp:GND.1", "black", [] ],
+    [ "matrix1:DIN", "esp:23", "blue", [] ],
+    [ "matrix1:CLK", "esp:18", "orange", [] ],
+    [ "matrix1:CS", "esp:5", "violet", [] ],
+
+    [ "servo1:PWM", "esp:13", "orange", [] ],
+    [ "servo1:V+", "esp:5V", "red", [] ],
+    [ "servo1:GND", "esp:GND.2", "black", [] ],
+
+    [ "esp:26", "r1:1", "green", [] ],
+    [ "r1:2", "ledUp:A", "green", [] ],
+    [ "ledUp:C", "esp:GND.2", "black", [] ],
+    [ "esp:27", "r2:1", "red", [] ],
+    [ "r2:2", "ledDown:A", "red", [] ],
+    [ "ledDown:C", "esp:GND.2", "black", [] ],
+
+    [ "btn1:1.l", "esp:14", "blue", [] ],
+    [ "btn1:2.l", "esp:GND.2", "black", [] ]
+  ],
+  "dependencies": {}
+}
