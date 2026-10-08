@@ -2,8 +2,6 @@
   "recommendations": [
     "platformio.platformio-ide",
     "wokwi.wokwi-vscode",
-    "ms-python.python",
-    "github.copilot",
-    "anthropic.claude-code"
+    "ms-python.python"
   ]
 }
