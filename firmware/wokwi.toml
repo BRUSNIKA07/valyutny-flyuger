@@ -2,7 +2,3 @@
 version = 1
 firmware = '.pio/build/esp32dev/firmware.bin'
 elf = '.pio/build/esp32dev/firmware.elf'
-
-[net]
-# Доступ из симуляции к компьютеру по адресу host.wokwi.internal
-gateway = true

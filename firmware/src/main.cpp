@@ -29,45 +29,35 @@
 #define CS_PIN         5   // матрица: DIN=23, CLK=18 (аппаратный SPI), CS=5
 
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
-#define MAX_DEVICES   4    // 4 модуля 8x8 = 8x32
+#define MAX_DEVICES   8    // 8 модулей 8x8 = 8x64
 #define MATRIX_COLS   (MAX_DEVICES * 8)
 
-// ---------- Матрица: кадры ----------
-// Валюта показывается короткими кадрами по центру: "USD" -> "x100" (если nominal = 100) -> "82.10" -> "▲0.42%".
-const uint16_t FRAME_SPEED     = 40;   // мс на шаг анимации; въезд и выезд по 8 шагов
-const uint16_t FRAME_ANIM_MS   = 2 * 8 * FRAME_SPEED;
-const long     FRAME_PAUSE_MIN = 800;  // сколько кадр стоит на месте, мс
-const long     FRAME_PAUSE_MAX = 3000;
-const uint16_t MODE_MSG_PAUSE  = 1000;
+// ---------- Матрица ----------
+// Вся строка сразу, по центру, без прокрутки: "USD 82.10 ▼0.35".
+// Для nominal = 100: "KZT 16.20/100", изменение — следующим кадром (вместе не влезает).
+const uint16_t MODE_MSG_PAUSE = 1500;
 
-// Свои символы-стрелки. Столбцы слева направо, бит 0 — верхняя строка.
+// Свои символы. Столбцы слева направо, бит 0 — верхняя строка.
 #define CH_UP   '\x01'
 #define CH_DOWN '\x02'
 const uint8_t arrowUp[]   = {5, 0x20, 0x38, 0x3E, 0x38, 0x20};  // ▲
 const uint8_t arrowDown[] = {5, 0x02, 0x0E, 0x3E, 0x0E, 0x02};  // ▼
 
-// Узкий шрифт (цифры шириной 3 точки) для чисел, которые не влезают в 32 точки.
-// Формат MD_MAX72XX v2: 'F', 2, первый символ, последний символ, высота; затем ширина и столбцы.
-MD_MAX72XX::fontType_t narrowFont[] PROGMEM = {
-  'F', 2, 0, '%', 0, '9', 8,
-  4, 0x41, 0x30, 0x0C, 0x43,  // %
-  0, 0, 0, 0, 0,              // & ' ( ) * — не нужны
-  3, 0x08, 0x1C, 0x08,        // +
-  0,                          // ,
-  3, 0x08, 0x08, 0x08,        // -
-  1, 0x40,                    // .
-  0,                          // /
-  3, 0x7F, 0x41, 0x7F,        // 0
-  3, 0x42, 0x7F, 0x40,        // 1
-  3, 0x79, 0x49, 0x4F,        // 2
-  3, 0x49, 0x49, 0x7F,        // 3
-  3, 0x0F, 0x08, 0x7F,        // 4
-  3, 0x4F, 0x49, 0x79,        // 5
-  3, 0x7F, 0x49, 0x79,        // 6
-  3, 0x01, 0x01, 0x7F,        // 7
-  3, 0x7F, 0x49, 0x7F,        // 8
-  3, 0x4F, 0x49, 0x7F,        // 9
+// Узкие цифры (3 точки вместо 5) — иначе строка не влезает в 64 точки
+const uint8_t narrowDigits[10][4] = {
+  {3, 0x7F, 0x41, 0x7F},  // 0
+  {3, 0x42, 0x7F, 0x40},  // 1
+  {3, 0x79, 0x49, 0x4F},  // 2
+  {3, 0x49, 0x49, 0x7F},  // 3
+  {3, 0x0F, 0x08, 0x7F},  // 4
+  {3, 0x4F, 0x49, 0x79},  // 5
+  {3, 0x7F, 0x49, 0x79},  // 6
+  {3, 0x01, 0x01, 0x7F},  // 7
+  {3, 0x7F, 0x49, 0x7F},  // 8
+  {3, 0x4F, 0x49, 0x7F},  // 9
 };
+const uint8_t narrowDot[]   = {1, 0x40};              // .
+const uint8_t narrowSlash[] = {3, 0x60, 0x1C, 0x03};  // /
 
 // ---------- Настройки ----------
 const float SCALE_PCT          = 2.0;    // шкала флюгера: от -2% до +2%
@@ -119,10 +109,10 @@ unsigned long lastServoStep = 0;
 char text[48];           // строка для лога в Serial
 bool modeMsgPending = false;
 
-char frames[5][16];      // кадры текущей валюты (+ "no link")
+char frames[3][28];      // кадры текущей валюты (+ "no link")
 int frameCount = 0;
 int frameIdx = 0;
-char frameText[16];      // то, что сейчас на матрице (MD_Parola хранит указатель)
+char frameText[28];      // то, что сейчас на матрице (MD_Parola хранит указатель)
 long framePause = 2000;
 
 bool btnPrev = HIGH;
@@ -136,41 +126,34 @@ int angleFor(float pct) {
   return 90 + (int)(pct / SCALE_PCT * 90.0);
 }
 
-// Показать один кадр по центру. Если не влезает в 32 точки: сначала убираем "%",
-// потом берём узкий шрифт. Если не влезло и так — бегущая строка, но число не обрезаем.
+// Показать кадр целиком по центру и подержать pause мс
 void showFrame(const char* msg, uint16_t pause) {
-  strncpy(frameText, msg, sizeof(frameText) - 1);
-  frameText[sizeof(frameText) - 1] = '\0';
-
-  matrix.setFont(nullptr);
-  bool fits = matrix.getTextColumns(frameText) <= MATRIX_COLS;
-  if (!fits) {
-    char* pct = strchr(frameText, '%');
-    if (pct) *pct = '\0';
-    fits = matrix.getTextColumns(frameText) <= MATRIX_COLS;
-  }
-  if (!fits && strpbrk(frameText, "0123456789")) {
-    matrix.setFont(narrowFont);
-    fits = matrix.getTextColumns(frameText) <= MATRIX_COLS;
-  }
-
+  strlcpy(frameText, msg, sizeof(frameText));
   matrix.displayClear();
-  if (fits) matrix.displayText(frameText, PA_CENTER, FRAME_SPEED, pause, PA_SCROLL_UP, PA_SCROLL_UP);
-  else      matrix.displayText(frameText, PA_LEFT, FRAME_SPEED, pause, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  matrix.displayText(frameText, PA_CENTER, 0, pause, PA_PRINT, PA_NO_EFFECT);
 }
 
+// Кадры валюты: "USD 82.10 ▼0.35"; если не влезает — "KZT 16.20/100" и "▼0.10" отдельно
 void buildFrames(const Currency &c) {
+  char rate[24], change[12];
+  if (c.nominal == 1) snprintf(rate, sizeof(rate), "%s %.2f", c.code, c.rate);
+  else snprintf(rate, sizeof(rate), "%s %.2f/%d", c.code, c.rate, c.nominal);
+  char arrow = c.changePct > 0 ? CH_UP : (c.changePct < 0 ? CH_DOWN : ' ');
+  snprintf(change, sizeof(change), "%c%.2f", arrow, fabs(c.changePct));
+
   frameCount = 0;
-  snprintf(frames[frameCount++], sizeof(frames[0]), "%s", c.code);
-  if (c.nominal != 1) snprintf(frames[frameCount++], sizeof(frames[0]), "x%d", c.nominal);
-  snprintf(frames[frameCount++], sizeof(frames[0]), "%.2f", c.rate);
-  if (c.changePct > 0)      snprintf(frames[frameCount++], sizeof(frames[0]), "%c%.2f%%", CH_UP, c.changePct);
-  else if (c.changePct < 0) snprintf(frames[frameCount++], sizeof(frames[0]), "%c%.2f%%", CH_DOWN, -c.changePct);
-  else                      snprintf(frames[frameCount++], sizeof(frames[0]), "0.00%%");
-  if (!linkOk)              snprintf(frames[frameCount++], sizeof(frames[0]), "no link");
+  snprintf(frames[0], sizeof(frames[0]), "%s %s", rate, change);
+  if (matrix.getTextColumns(frames[0]) <= MATRIX_COLS) {
+    frameCount = 1;
+  } else {
+    strlcpy(frames[0], rate, sizeof(frames[0]));
+    strlcpy(frames[1], change, sizeof(frames[1]));
+    frameCount = 2;
+  }
+  if (!linkOk) strlcpy(frames[frameCount++], "no link", sizeof(frames[0]));
 
   // Весь цикл кадров укладываем в carousel_s
-  framePause = constrain((long)(carouselMs / frameCount) - FRAME_ANIM_MS, FRAME_PAUSE_MIN, FRAME_PAUSE_MAX);
+  framePause = min(carouselMs / frameCount, 60000UL);
 }
 
 void showCurrency(int i) {
@@ -180,7 +163,7 @@ void showCurrency(int i) {
   showFrame(frames[0], framePause);
   snprintf(text, sizeof(text), "%s x%d %.2f %+.2f%%", c.code, c.nominal, c.rate, c.changePct);
   targetAngle = angleFor(c.changePct);
-  Serial.printf("[%s] %s  ->  angle %d\n", autoMode ? "AUTO" : "MANUAL", text, targetAngle);
+  Serial.printf("[%s] %s  ->  angle %d\r\n", autoMode ? "AUTO" : "MANUAL", text, targetAngle);
 }
 
 void nextCurrency() {
@@ -197,7 +180,7 @@ bool fetchRates() {
   if (!http.begin(SERVER_URL)) return false;
   int status = http.GET();
   if (status != HTTP_CODE_OK) {
-    Serial.printf("[net] HTTP %d\n", status);
+    Serial.printf("[net] HTTP %d\r\n", status);
     http.end();
     return false;
   }
@@ -205,7 +188,7 @@ bool fetchRates() {
   DeserializationError err = deserializeJson(doc, http.getString());
   http.end();
   if (err) {
-    Serial.printf("[net] JSON: %s\n", err.c_str());
+    Serial.printf("[net] JSON: %s\r\n", err.c_str());
     return false;
   }
 
@@ -240,8 +223,8 @@ void updateNetwork() {
   wl_status_t st = WiFi.status();
   if (st != wifiPrev) {
     wifiPrev = st;
-    if (st == WL_CONNECTED) Serial.printf("[net] Wi-Fi ok, IP %s\n", WiFi.localIP().toString().c_str());
-    else Serial.printf("[net] Wi-Fi status %d\n", st);
+    if (st == WL_CONNECTED) Serial.printf("[net] Wi-Fi ok, IP %s\r\n", WiFi.localIP().toString().c_str());
+    else Serial.printf("[net] Wi-Fi status %d\r\n", st);
   }
 
   if (st != WL_CONNECTED) {
@@ -254,7 +237,7 @@ void updateNetwork() {
   lastPoll = millis();
   polledOnce = true;
   bool ok = fetchRates();
-  Serial.printf("[net] %s: %s\n", SERVER_URL, ok ? "ok" : "no link");
+  Serial.printf("[net] %s: %s\r\n", SERVER_URL, ok ? "ok" : "no link");
   if (ok || linkOk) {                  // новые данные или связь пропала
     linkOk = ok;
     applyData();
@@ -292,7 +275,7 @@ void updateButton() {
     longHandled = true;                           // удержание
     autoMode = !autoMode;
     lastSwitch = now;
-    showFrame(autoMode ? "Auto" : "Manual", MODE_MSG_PAUSE);  // "MANUAL" заглавными не влезает в 32 точки
+    showFrame(autoMode ? "AUTO" : "MANUAL", MODE_MSG_PAUSE);
     modeMsgPending = true;
   }
   if (btnPrev == LOW && btn == HIGH) {          // отпустили
@@ -317,14 +300,17 @@ void setup() {
   matrix.setIntensity(4);
   matrix.addChar(CH_UP, arrowUp);
   matrix.addChar(CH_DOWN, arrowDown);
+  for (int d = 0; d < 10; d++) matrix.addChar('0' + d, narrowDigits[d]);
+  matrix.addChar('.', narrowDot);
+  matrix.addChar('/', narrowSlash);
 
-  Serial.println("Valutny fluger: started");
+  Serial.println("Valutny fluger: started");   // println сам добавляет \r\n
   showCurrency(current);
   lastSwitch = millis();
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);   // не ждём: подключение идёт в фоне
-  Serial.printf("[net] Wi-Fi: connecting to %s\n", WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD, WIFI_CHANNEL);   // один раз; не ждём — подключение идёт в фоне
+  Serial.printf("[net] Wi-Fi: connecting to %s\r\n", WIFI_SSID);
 }
 
 void loop() {
@@ -332,7 +318,7 @@ void loop() {
   updateNetwork();
 
   if (matrix.displayAnimate()) {     // кадр въехал, постоял и уехал
-    unsigned long cycleMs = frameCount * (framePause + FRAME_ANIM_MS);
+    unsigned long cycleMs = frameCount * framePause;
     if (modeMsgPending) {            // после Auto/Manual вернуть валюту
       modeMsgPending = false;
       showCurrency(current);
