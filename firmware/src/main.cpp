@@ -1,10 +1,4 @@
 #include <Arduino.h>
-
-// ===== Валютный флюгер =====
-// ESP32 + сервопривод (флюгер) + матрица MAX7219 8x32 + 2 светодиода + кнопка.
-// Курсы и настройки раз в 60 с берутся с сервера (GET /api/rates) по Wi-Fi.
-// Пока ответа нет или связь пропала — показываем последние данные (сначала демо) и кадр "no link".
-
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -13,278 +7,430 @@
 #include <MD_MAX72xx.h>
 #include <SPI.h>
 
-// Wi-Fi и адрес сервера: свой fluger_config.h (не в git), иначе значения для Wokwi из fluger_config.example.h
-// (имя не config.h: файл с таким именем уже есть в toolchain ESP32)
 #if __has_include("fluger_config.h")
 #include "fluger_config.h"
 #else
 #include "fluger_config.example.h"
 #endif
 
-// ---------- Пины ----------
-#define SERVO_PIN     13
-#define LED_UP_PIN    26   // зелёный: рост
-#define LED_DOWN_PIN  27   // красный: падение
-#define BUTTON_PIN    14   // кнопка на GND, внутренняя подтяжка
-#define CS_PIN         5   // матрица: DIN=23, CLK=18 (аппаратный SPI), CS=5
+const int SERVO_PIN = 13;
+const int LED_UP_PIN = 26;
+const int LED_DOWN_PIN = 27;
+const int BUTTON_PIN = 14;
+const int MATRIX_CS_PIN = 5;
 
-#define HARDWARE_TYPE MD_MAX72XX::FC16_HW
-#define MAX_DEVICES   8    // 8 модулей 8x8 = 8x64
-#define MATRIX_COLS   (MAX_DEVICES * 8)
+const int MATRIX_MODULES = 8;
+const int MATRIX_WIDTH = MATRIX_MODULES * 8;
 
-// ---------- Матрица ----------
-// Вся строка сразу, по центру, без прокрутки: "USD 82.10 ▼0.35".
-// Для nominal = 100: "KZT 16.20/100", изменение — следующим кадром (вместе не влезает).
-const uint16_t MODE_MSG_PAUSE = 1500;
+const float SCALE_PERCENT = 2.0;
+const unsigned long LONG_PRESS_MS = 800;
+const unsigned long DEBOUNCE_MS = 30;
+const unsigned long POLL_INTERVAL_MS = 60000;
+const unsigned long MAX_FRAME_PAUSE_MS = 60000;
+const unsigned long MIN_CAROUSEL_MS = 2000;
+const uint16_t HTTP_TIMEOUT_MS = 3000;
+const uint16_t MODE_MESSAGE_MS = 1500;
+const unsigned long SERVO_STEP_MS = 15;
+const unsigned long BLINK_MS = 300;
 
-// Свои символы. Столбцы слева направо, бит 0 — верхняя строка.
-#define CH_UP   '\x01'
-#define CH_DOWN '\x02'
-const uint8_t arrowUp[]   = {5, 0x20, 0x38, 0x3E, 0x38, 0x20};  // ▲
-const uint8_t arrowDown[] = {5, 0x02, 0x0E, 0x3E, 0x0E, 0x02};  // ▼
+const char ARROW_UP = 1;
+const char ARROW_DOWN = 2;
 
-// Узкие цифры (3 точки вместо 5) — иначе строка не влезает в 64 точки
-const uint8_t narrowDigits[10][4] = {
-  {3, 0x7F, 0x41, 0x7F},  // 0
-  {3, 0x42, 0x7F, 0x40},  // 1
-  {3, 0x79, 0x49, 0x4F},  // 2
-  {3, 0x49, 0x49, 0x7F},  // 3
-  {3, 0x0F, 0x08, 0x7F},  // 4
-  {3, 0x4F, 0x49, 0x79},  // 5
-  {3, 0x7F, 0x49, 0x79},  // 6
-  {3, 0x01, 0x01, 0x7F},  // 7
-  {3, 0x7F, 0x49, 0x7F},  // 8
-  {3, 0x4F, 0x49, 0x7F},  // 9
+const uint8_t arrowUpShape[] = {5, 0x20, 0x38, 0x3E, 0x38, 0x20};
+const uint8_t arrowDownShape[] = {5, 0x02, 0x0E, 0x3E, 0x0E, 0x02};
+const uint8_t dotShape[] = {1, 0x40};
+const uint8_t slashShape[] = {3, 0x60, 0x1C, 0x03};
+const uint8_t digitShapes[10][4] = {
+  {3, 0x7F, 0x41, 0x7F},
+  {3, 0x42, 0x7F, 0x40},
+  {3, 0x79, 0x49, 0x4F},
+  {3, 0x49, 0x49, 0x7F},
+  {3, 0x0F, 0x08, 0x7F},
+  {3, 0x4F, 0x49, 0x79},
+  {3, 0x7F, 0x49, 0x79},
+  {3, 0x01, 0x01, 0x7F},
+  {3, 0x7F, 0x49, 0x7F},
+  {3, 0x4F, 0x49, 0x7F},
 };
-const uint8_t narrowDot[]   = {1, 0x40};              // .
-const uint8_t narrowSlash[] = {3, 0x60, 0x1C, 0x03};  // /
 
-// ---------- Настройки ----------
-const float SCALE_PCT          = 2.0;    // шкала флюгера: от -2% до +2%
-const unsigned long LONG_PRESS_MS = 800; // удержание кнопки = смена режима
-const unsigned long POLL_MS     = 60000; // опрос сервера
-const uint16_t HTTP_TIMEOUT_MS  = 3000;
-// Приходят в settings ответа сервера (alert_pct, carousel_s); до первого ответа — по умолчанию
-float alertPct          = 1.0;    // порог мигания светодиода, %
-unsigned long carouselMs = 10000; // смена валюты в авторежиме, мс
-
-// ---------- Данные ----------
 struct Currency {
   char code[8];
-  int nominal;      // за сколько единиц валюты дана цена (1 или 100, как у ЦБ)
-  float rate;       // рублей за nominal единиц
-  float changePct;  // изменение за сутки, %
+  int nominal;
+  float rate;
+  float changePercent;
 };
 
-// Список валют приходит с сервера. До первого ответа — демо-значения, не реальные курсы.
 const int MAX_CURRENCIES = 10;
 Currency currencies[MAX_CURRENCIES] = {
-  {"CNY",   1, 11.50,  0.42},
-  {"USD",   1, 82.10, -0.35},
-  {"EUR",   1, 95.30,  1.25},
+  {"CNY", 1, 11.50, 0.42},
+  {"USD", 1, 82.10, -0.35},
+  {"EUR", 1, 95.30, 1.25},
   {"KZT", 100, 16.20, -0.10},
-  {"MNT", 100,  2.40, -1.60},
+  {"MNT", 100, 2.40, -1.60},
 };
 int currencyCount = 5;
 
-// ---------- Связь ----------
-bool linkOk = false;             // последний опрос сервера удался
-unsigned long lastPoll = 0;
-bool polledOnce = false;
-wl_status_t wifiPrev = WL_IDLE_STATUS;
+float alertPercent = 1.0;
+unsigned long carouselMs = 10000;
 
-// ---------- Объекты ----------
-MD_Parola matrix(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
-Servo needle;
+MD_Parola matrix(MD_MAX72XX::FC16_HW, MATRIX_CS_PIN, MATRIX_MODULES);
+Servo servo;
 
-// ---------- Состояние ----------
-int current = 0;
+int currentIndex = 0;
 bool autoMode = true;
-unsigned long lastSwitch = 0;
+unsigned long lastSwitchTime = 0;
 
-int needleAngle = 90;   // текущий угол
-int targetAngle = 90;   // куда едем
-unsigned long lastServoStep = 0;
+int servoAngle = 90;
+int servoTarget = 90;
+unsigned long lastServoStepTime = 0;
 
-char text[48];           // строка для лога в Serial
-bool modeMsgPending = false;
-
-char frames[3][28];      // кадры текущей валюты (+ "no link")
+char frames[3][28];
 int frameCount = 0;
-int frameIdx = 0;
-char frameText[28];      // то, что сейчас на матрице (MD_Parola хранит указатель)
-long framePause = 2000;
+int frameIndex = 0;
+char shownText[28];
+unsigned long framePause = 2000;
+bool modeMessageShown = false;
 
-bool btnPrev = HIGH;
-unsigned long pressStart = 0;
-bool longHandled = false;
+bool serverOk = false;
+bool pollDone = false;
+unsigned long lastPollTime = 0;
+wl_status_t lastWifiStatus = WL_IDLE_STATUS;
 
-// Перевод изменения в процентах в угол сервопривода (0..180, 90 = ноль)
-int angleFor(float pct) {
-  if (pct >  SCALE_PCT) pct =  SCALE_PCT;
-  if (pct < -SCALE_PCT) pct = -SCALE_PCT;
-  return 90 + (int)(pct / SCALE_PCT * 90.0);
+bool buttonWasDown = false;
+bool longPressDone = false;
+unsigned long pressStartTime = 0;
+
+const char* modeName() {
+  if (autoMode) {
+    return "AUTO";
+  }
+  return "MANUAL";
 }
 
-// Показать кадр целиком по центру и подержать pause мс
-void showFrame(const char* msg, uint16_t pause) {
-  strlcpy(frameText, msg, sizeof(frameText));
+int angleForChange(float percent) {
+  if (percent > SCALE_PERCENT) {
+    percent = SCALE_PERCENT;
+  }
+  if (percent < -SCALE_PERCENT) {
+    percent = -SCALE_PERCENT;
+  }
+  return 90 + (int)(percent / SCALE_PERCENT * 90.0);
+}
+
+char arrowForChange(float percent) {
+  if (percent > 0) {
+    return ARROW_UP;
+  }
+  if (percent < 0) {
+    return ARROW_DOWN;
+  }
+  return ' ';
+}
+
+void addCustomChars() {
+  matrix.addChar(ARROW_UP, arrowUpShape);
+  matrix.addChar(ARROW_DOWN, arrowDownShape);
+  for (int digit = 0; digit < 10; digit++) {
+    matrix.addChar('0' + digit, digitShapes[digit]);
+  }
+  matrix.addChar('.', dotShape);
+  matrix.addChar('/', slashShape);
+}
+
+void showText(const char* text, uint16_t pauseMs) {
+  strlcpy(shownText, text, sizeof(shownText));
   matrix.displayClear();
-  matrix.displayText(frameText, PA_CENTER, 0, pause, PA_PRINT, PA_NO_EFFECT);
+  matrix.displayText(shownText, PA_CENTER, 0, pauseMs, PA_PRINT, PA_NO_EFFECT);
 }
 
-// Кадры валюты: "USD 82.10 ▼0.35"; если не влезает — "KZT 16.20/100" и "▼0.10" отдельно
-void buildFrames(const Currency &c) {
-  char rate[24], change[12];
-  if (c.nominal == 1) snprintf(rate, sizeof(rate), "%s %.2f", c.code, c.rate);
-  else snprintf(rate, sizeof(rate), "%s %.2f/%d", c.code, c.rate, c.nominal);
-  char arrow = c.changePct > 0 ? CH_UP : (c.changePct < 0 ? CH_DOWN : ' ');
-  snprintf(change, sizeof(change), "%c%.2f", arrow, fabs(c.changePct));
+void makeRateText(const Currency& currency, char* text, int size) {
+  if (currency.nominal == 1) {
+    snprintf(text, size, "%s %.2f", currency.code, currency.rate);
+  } else {
+    snprintf(text, size, "%s %.2f/%d", currency.code, currency.rate, currency.nominal);
+  }
+}
 
-  frameCount = 0;
-  snprintf(frames[0], sizeof(frames[0]), "%s %s", rate, change);
-  if (matrix.getTextColumns(frames[0]) <= MATRIX_COLS) {
+void makeChangeText(const Currency& currency, char* text, int size) {
+  char arrow = arrowForChange(currency.changePercent);
+  snprintf(text, size, "%c%.2f", arrow, fabs(currency.changePercent));
+}
+
+void makeFrames(const Currency& currency) {
+  char rateText[24];
+  char changeText[12];
+  makeRateText(currency, rateText, sizeof(rateText));
+  makeChangeText(currency, changeText, sizeof(changeText));
+
+  snprintf(frames[0], sizeof(frames[0]), "%s %s", rateText, changeText);
+  if (matrix.getTextColumns(frames[0]) <= MATRIX_WIDTH) {
     frameCount = 1;
   } else {
-    strlcpy(frames[0], rate, sizeof(frames[0]));
-    strlcpy(frames[1], change, sizeof(frames[1]));
+    strlcpy(frames[0], rateText, sizeof(frames[0]));
+    strlcpy(frames[1], changeText, sizeof(frames[1]));
     frameCount = 2;
   }
-  if (!linkOk) strlcpy(frames[frameCount++], "no link", sizeof(frames[0]));
 
-  // Весь цикл кадров укладываем в carousel_s
-  framePause = min(carouselMs / frameCount, 60000UL);
+  if (!serverOk) {
+    strlcpy(frames[frameCount], "no link", sizeof(frames[0]));
+    frameCount++;
+  }
+
+  framePause = carouselMs / frameCount;
+  if (framePause > MAX_FRAME_PAUSE_MS) {
+    framePause = MAX_FRAME_PAUSE_MS;
+  }
 }
 
-void showCurrency(int i) {
-  Currency &c = currencies[i];
-  buildFrames(c);
-  frameIdx = 0;
-  showFrame(frames[0], framePause);
-  snprintf(text, sizeof(text), "%s x%d %.2f %+.2f%%", c.code, c.nominal, c.rate, c.changePct);
-  targetAngle = angleFor(c.changePct);
-  Serial.printf("[%s] %s  ->  angle %d\r\n", autoMode ? "AUTO" : "MANUAL", text, targetAngle);
+void printCurrency(const Currency& currency) {
+  Serial.printf("[%s] %s x%d %.2f %+.2f%%  ->  angle %d\r\n", modeName(), currency.code,
+                currency.nominal, currency.rate, currency.changePercent, servoTarget);
 }
 
-void nextCurrency() {
-  current = (current + 1) % currencyCount;
-  lastSwitch = millis();
-  showCurrency(current);
+void showCurrency(int index) {
+  Currency& currency = currencies[index];
+  makeFrames(currency);
+  frameIndex = 0;
+  showText(frames[0], framePause);
+  servoTarget = angleForChange(currency.changePercent);
+  printCurrency(currency);
 }
 
-// Один запрос к серверу: курсы и настройки. true — если ответ получен и разобран.
-bool fetchRates() {
+void showNextCurrency() {
+  currentIndex = (currentIndex + 1) % currencyCount;
+  lastSwitchTime = millis();
+  showCurrency(currentIndex);
+}
+
+void readCurrency(JsonObject item, Currency& currency) {
+  const char* code = item["code"];
+  if (code == nullptr) {
+    code = "???";
+  }
+  strlcpy(currency.code, code, sizeof(currency.code));
+
+  currency.nominal = 1;
+  if (item["nominal"].is<int>()) {
+    currency.nominal = item["nominal"].as<int>();
+  }
+
+  currency.rate = 0.0;
+  if (item["rate"].is<float>()) {
+    currency.rate = item["rate"].as<float>();
+  }
+
+  currency.changePercent = 0.0;
+  if (item["change"].is<float>()) {
+    currency.changePercent = item["change"].as<float>();
+  }
+}
+
+void readSettings(JsonObject settings) {
+  if (settings["alert_pct"].is<float>()) {
+    alertPercent = settings["alert_pct"].as<float>();
+  }
+  if (settings["carousel_s"].is<float>()) {
+    carouselMs = (unsigned long)(settings["carousel_s"].as<float>() * 1000);
+    if (carouselMs < MIN_CAROUSEL_MS) {
+      carouselMs = MIN_CAROUSEL_MS;
+    }
+  }
+}
+
+bool readRates(JsonDocument& doc) {
+  JsonArray items = doc["rates"];
+  if (items.size() == 0) {
+    return false;
+  }
+
+  int count = 0;
+  for (JsonObject item : items) {
+    if (count >= MAX_CURRENCIES) {
+      break;
+    }
+    readCurrency(item, currencies[count]);
+    count++;
+  }
+  currencyCount = count;
+
+  readSettings(doc["settings"]);
+  return true;
+}
+
+bool downloadRates() {
   HTTPClient http;
   http.setConnectTimeout(HTTP_TIMEOUT_MS);
   http.setTimeout(HTTP_TIMEOUT_MS);
-  if (!http.begin(SERVER_URL)) return false;
+  if (!http.begin(SERVER_URL)) {
+    return false;
+  }
+
   int status = http.GET();
   if (status != HTTP_CODE_OK) {
     Serial.printf("[net] HTTP %d\r\n", status);
     http.end();
     return false;
   }
+
   JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, http.getString());
+  DeserializationError error = deserializeJson(doc, http.getString());
   http.end();
-  if (err) {
-    Serial.printf("[net] JSON: %s\r\n", err.c_str());
+  if (error) {
+    Serial.printf("[net] JSON: %s\r\n", error.c_str());
     return false;
   }
 
-  JsonArray rates = doc["rates"];
-  if (rates.size() == 0) return false;
-  int n = 0;
-  for (JsonObject r : rates) {
-    if (n >= MAX_CURRENCIES) break;
-    Currency &c = currencies[n++];
-    strlcpy(c.code, r["code"] | "???", sizeof(c.code));
-    c.nominal   = r["nominal"] | 1;
-    c.rate      = r["rate"] | 0.0f;
-    c.changePct = r["change"] | 0.0f;
+  return readRates(doc);
+}
+
+void refreshCurrentCurrency() {
+  if (currentIndex >= currencyCount) {
+    currentIndex = 0;
   }
-  currencyCount = n;
-
-  JsonObject s = doc["settings"];
-  if (s["alert_pct"].is<float>())  alertPct = s["alert_pct"].as<float>();
-  if (s["carousel_s"].is<float>()) carouselMs = max(2000UL, (unsigned long)(s["carousel_s"].as<float>() * 1000));
-  return true;
+  makeFrames(currencies[currentIndex]);
+  servoTarget = angleForChange(currencies[currentIndex].changePercent);
 }
 
-// Новые данные или смена состояния связи: пересобрать кадры, не прерывая текущий
-void applyData() {
-  if (current >= currencyCount) current = 0;
-  buildFrames(currencies[current]);
-  targetAngle = angleFor(currencies[current].changePct);
+void printWifiStatus(wl_status_t status) {
+  if (status == WL_CONNECTED) {
+    Serial.printf("[net] Wi-Fi ok, IP %s\r\n", WiFi.localIP().toString().c_str());
+  } else {
+    Serial.printf("[net] Wi-Fi status %d\r\n", status);
+  }
 }
 
-// Wi-Fi подключается сам в фоне; сервер опрашиваем сразу после подключения и затем раз в POLL_MS
+void pollServer() {
+  lastPollTime = millis();
+  pollDone = true;
+
+  bool ok = downloadRates();
+  if (ok) {
+    Serial.printf("[net] %s: ok\r\n", SERVER_URL);
+  } else {
+    Serial.printf("[net] %s: no link\r\n", SERVER_URL);
+  }
+
+  if (ok || serverOk) {
+    serverOk = ok;
+    refreshCurrentCurrency();
+  }
+}
+
 void updateNetwork() {
-  wl_status_t st = WiFi.status();
-  if (st != wifiPrev) {
-    wifiPrev = st;
-    if (st == WL_CONNECTED) Serial.printf("[net] Wi-Fi ok, IP %s\r\n", WiFi.localIP().toString().c_str());
-    else Serial.printf("[net] Wi-Fi status %d\r\n", st);
+  wl_status_t status = WiFi.status();
+  if (status != lastWifiStatus) {
+    lastWifiStatus = status;
+    printWifiStatus(status);
   }
 
-  if (st != WL_CONNECTED) {
-    polledOnce = false;                // после переподключения опросить сразу
-    if (linkOk) { linkOk = false; applyData(); }
+  if (status != WL_CONNECTED) {
+    pollDone = false;
+    if (serverOk) {
+      serverOk = false;
+      refreshCurrentCurrency();
+    }
     return;
   }
-  if (polledOnce && millis() - lastPoll < POLL_MS) return;
 
-  lastPoll = millis();
-  polledOnce = true;
-  bool ok = fetchRates();
-  Serial.printf("[net] %s: %s\r\n", SERVER_URL, ok ? "ok" : "no link");
-  if (ok || linkOk) {                  // новые данные или связь пропала
-    linkOk = ok;
-    applyData();
+  if (pollDone && millis() - lastPollTime < POLL_INTERVAL_MS) {
+    return;
   }
+  pollServer();
 }
 
-// Плавный поворот флюгера: 1 градус каждые 15 мс
-void updateNeedle() {
-  if (needleAngle == targetAngle) return;
-  if (millis() - lastServoStep < 15) return;
-  lastServoStep = millis();
-  needleAngle += (targetAngle > needleAngle) ? 1 : -1;
-  needle.write(needleAngle);
+void updateServo() {
+  if (servoAngle == servoTarget) {
+    return;
+  }
+  if (millis() - lastServoStepTime < SERVO_STEP_MS) {
+    return;
+  }
+  lastServoStepTime = millis();
+  if (servoTarget > servoAngle) {
+    servoAngle++;
+  } else {
+    servoAngle--;
+  }
+  servo.write(servoAngle);
 }
 
-// Светодиоды тренда; при скачке >= ALERT_PCT — мигание
 void updateLeds() {
-  float pct = currencies[current].changePct;
-  bool on = true;
-  if (fabs(pct) >= alertPct) on = (millis() / 300) % 2;
-  digitalWrite(LED_UP_PIN,   (pct > 0 && on) ? HIGH : LOW);
-  digitalWrite(LED_DOWN_PIN, (pct < 0 && on) ? HIGH : LOW);
+  float percent = currencies[currentIndex].changePercent;
+  bool lightOn = true;
+  if (fabs(percent) >= alertPercent) {
+    lightOn = (millis() / BLINK_MS) % 2;
+  }
+  digitalWrite(LED_UP_PIN, (percent > 0 && lightOn) ? HIGH : LOW);
+  digitalWrite(LED_DOWN_PIN, (percent < 0 && lightOn) ? HIGH : LOW);
 }
 
-// Короткое нажатие — следующая валюта (и ручной режим), удержание — авто/ручной
+void onLongPress(unsigned long now) {
+  longPressDone = true;
+  autoMode = !autoMode;
+  lastSwitchTime = now;
+  showText(modeName(), MODE_MESSAGE_MS);
+  modeMessageShown = true;
+}
+
+void onShortPress() {
+  autoMode = false;
+  showNextCurrency();
+}
+
 void updateButton() {
-  bool btn = digitalRead(BUTTON_PIN);
+  bool buttonDown = digitalRead(BUTTON_PIN) == LOW;
   unsigned long now = millis();
 
-  if (btnPrev == HIGH && btn == LOW) {          // нажали
-    pressStart = now;
-    longHandled = false;
+  if (buttonDown && !buttonWasDown) {
+    pressStartTime = now;
+    longPressDone = false;
   }
-  if (btn == LOW && !longHandled && now - pressStart >= LONG_PRESS_MS) {
-    longHandled = true;                           // удержание
-    autoMode = !autoMode;
-    lastSwitch = now;
-    showFrame(autoMode ? "AUTO" : "MANUAL", MODE_MSG_PAUSE);
-    modeMsgPending = true;
+
+  if (buttonDown && !longPressDone && now - pressStartTime >= LONG_PRESS_MS) {
+    onLongPress(now);
   }
-  if (btnPrev == LOW && btn == HIGH) {          // отпустили
-    if (!longHandled && now - pressStart > 30) { // короткое (с антидребезгом)
-      autoMode = false;
-      nextCurrency();
+
+  if (!buttonDown && buttonWasDown) {
+    if (!longPressDone && now - pressStartTime > DEBOUNCE_MS) {
+      onShortPress();
     }
   }
-  btnPrev = btn;
+
+  buttonWasDown = buttonDown;
+}
+
+bool timeForNextCurrency() {
+  unsigned long cycleMs = frameCount * framePause;
+  unsigned long shownMs = millis() - lastSwitchTime;
+  return autoMode && shownMs + cycleMs / 2 >= carouselMs;
+}
+
+void updateMatrix() {
+  if (!matrix.displayAnimate()) {
+    return;
+  }
+
+  if (modeMessageShown) {
+    modeMessageShown = false;
+    showCurrency(currentIndex);
+    return;
+  }
+
+  frameIndex++;
+  if (frameIndex < frameCount) {
+    showText(frames[frameIndex], framePause);
+  } else if (timeForNextCurrency()) {
+    showNextCurrency();
+  } else {
+    frameIndex = 0;
+    showText(frames[0], framePause);
+  }
+}
+
+void startWifi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD, WIFI_CHANNEL);
+  Serial.printf("[net] Wi-Fi: connecting to %s\r\n", WIFI_SSID);
 }
 
 void setup() {
@@ -293,45 +439,24 @@ void setup() {
   pinMode(LED_DOWN_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-  needle.attach(SERVO_PIN);
-  needle.write(needleAngle);
+  servo.attach(SERVO_PIN);
+  servo.write(servoAngle);
 
   matrix.begin();
   matrix.setIntensity(4);
-  matrix.addChar(CH_UP, arrowUp);
-  matrix.addChar(CH_DOWN, arrowDown);
-  for (int d = 0; d < 10; d++) matrix.addChar('0' + d, narrowDigits[d]);
-  matrix.addChar('.', narrowDot);
-  matrix.addChar('/', narrowSlash);
+  addCustomChars();
 
-  Serial.println("Valutny fluger: started");   // println сам добавляет \r\n
-  showCurrency(current);
-  lastSwitch = millis();
+  Serial.println("Valutny fluger: started");
+  showCurrency(currentIndex);
+  lastSwitchTime = millis();
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD, WIFI_CHANNEL);   // один раз; не ждём — подключение идёт в фоне
-  Serial.printf("[net] Wi-Fi: connecting to %s\r\n", WIFI_SSID);
+  startWifi();
 }
 
 void loop() {
   updateButton();
   updateNetwork();
-
-  if (matrix.displayAnimate()) {     // кадр въехал, постоял и уехал
-    unsigned long cycleMs = frameCount * framePause;
-    if (modeMsgPending) {            // после Auto/Manual вернуть валюту
-      modeMsgPending = false;
-      showCurrency(current);
-    } else if (++frameIdx < frameCount) {
-      showFrame(frames[frameIdx], framePause);
-    } else if (autoMode && millis() - lastSwitch + cycleMs / 2 >= carouselMs) {
-      nextCurrency();                // валюту меняем только между циклами кадров
-    } else {
-      frameIdx = 0;                  // ручной режим или carousel_s длинный — цикл заново
-      showFrame(frames[0], framePause);
-    }
-  }
-
-  updateNeedle();
+  updateMatrix();
+  updateServo();
   updateLeds();
 }

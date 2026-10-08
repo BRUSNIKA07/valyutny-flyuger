@@ -2,9 +2,7 @@ from fastapi import FastAPI
 
 app = FastAPI(title="Валютный флюгер")
 
-# Заглушка. Позже: курсы из API ЦБ РФ, кэш, расчёт изменения за сутки.
-# rate — цена за nominal единиц валюты в рублях, как публикует ЦБ (у KZT и MNT nominal = 100).
-DEMO = {
+DEMO_RATES = {
     "date": "2026-10-05",
     "rates": [
         {"code": "CNY", "nominal": 1, "rate": 11.50, "change": 0.42},
@@ -24,4 +22,4 @@ def health():
 
 @app.get("/api/rates")
 def rates():
-    return DEMO
+    return DEMO_RATES
