@@ -19,6 +19,44 @@
 
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
 #define MAX_DEVICES   4    // 4 модуля 8x8 = 8x32
+#define MATRIX_COLS   (MAX_DEVICES * 8)
+
+// ---------- Матрица: кадры ----------
+// Валюта показывается короткими кадрами по центру: "USD" -> "x100" (если nominal = 100) -> "82.10" -> "▲0.42%".
+const uint16_t FRAME_SPEED     = 40;   // мс на шаг анимации; въезд и выезд по 8 шагов
+const uint16_t FRAME_ANIM_MS   = 2 * 8 * FRAME_SPEED;
+const long     FRAME_PAUSE_MIN = 800;  // сколько кадр стоит на месте, мс
+const long     FRAME_PAUSE_MAX = 3000;
+const uint16_t MODE_MSG_PAUSE  = 1000;
+
+// Свои символы-стрелки. Столбцы слева направо, бит 0 — верхняя строка.
+#define CH_UP   '\x01'
+#define CH_DOWN '\x02'
+const uint8_t arrowUp[]   = {5, 0x20, 0x38, 0x3E, 0x38, 0x20};  // ▲
+const uint8_t arrowDown[] = {5, 0x02, 0x0E, 0x3E, 0x0E, 0x02};  // ▼
+
+// Узкий шрифт (цифры шириной 3 точки) для чисел, которые не влезают в 32 точки.
+// Формат MD_MAX72XX v2: 'F', 2, первый символ, последний символ, высота; затем ширина и столбцы.
+MD_MAX72XX::fontType_t narrowFont[] PROGMEM = {
+  'F', 2, 0, '%', 0, '9', 8,
+  4, 0x41, 0x30, 0x0C, 0x43,  // %
+  0, 0, 0, 0, 0,              // & ' ( ) * — не нужны
+  3, 0x08, 0x1C, 0x08,        // +
+  0,                          // ,
+  3, 0x08, 0x08, 0x08,        // -
+  1, 0x40,                    // .
+  0,                          // /
+  3, 0x7F, 0x41, 0x7F,        // 0
+  3, 0x42, 0x7F, 0x40,        // 1
+  3, 0x79, 0x49, 0x4F,        // 2
+  3, 0x49, 0x49, 0x7F,        // 3
+  3, 0x0F, 0x08, 0x7F,        // 4
+  3, 0x4F, 0x49, 0x79,        // 5
+  3, 0x7F, 0x49, 0x79,        // 6
+  3, 0x01, 0x01, 0x7F,        // 7
+  3, 0x7F, 0x49, 0x7F,        // 8
+  3, 0x4F, 0x49, 0x7F,        // 9
+};
 
 // ---------- Настройки (позже придут с сервера) ----------
 const float SCALE_PCT          = 2.0;    // шкала флюгера: от -2% до +2%
@@ -58,8 +96,14 @@ int needleAngle = 90;   // текущий угол
 int targetAngle = 90;   // куда едем
 unsigned long lastServoStep = 0;
 
-char text[48];
+char text[48];           // строка для лога в Serial
 bool modeMsgPending = false;
+
+char frames[4][16];      // кадры текущей валюты
+int frameCount = 0;
+int frameIdx = 0;
+char frameText[16];      // то, что сейчас на матрице (MD_Parola хранит указатель)
+long framePause = 2000;
 
 bool btnPrev = HIGH;
 unsigned long pressStart = 0;
@@ -72,16 +116,48 @@ int angleFor(float pct) {
   return 90 + (int)(pct / SCALE_PCT * 90.0);
 }
 
-void showText(const char* msg) {
+// Показать один кадр по центру. Если не влезает в 32 точки: сначала убираем "%",
+// потом берём узкий шрифт. Если не влезло и так — бегущая строка, но число не обрезаем.
+void showFrame(const char* msg, uint16_t pause) {
+  strncpy(frameText, msg, sizeof(frameText) - 1);
+  frameText[sizeof(frameText) - 1] = '\0';
+
+  matrix.setFont(nullptr);
+  bool fits = matrix.getTextColumns(frameText) <= MATRIX_COLS;
+  if (!fits) {
+    char* pct = strchr(frameText, '%');
+    if (pct) *pct = '\0';
+    fits = matrix.getTextColumns(frameText) <= MATRIX_COLS;
+  }
+  if (!fits && strpbrk(frameText, "0123456789")) {
+    matrix.setFont(narrowFont);
+    fits = matrix.getTextColumns(frameText) <= MATRIX_COLS;
+  }
+
   matrix.displayClear();
-  matrix.displayText(msg, PA_CENTER, 40, 800, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  if (fits) matrix.displayText(frameText, PA_CENTER, FRAME_SPEED, pause, PA_SCROLL_UP, PA_SCROLL_UP);
+  else      matrix.displayText(frameText, PA_LEFT, FRAME_SPEED, pause, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+}
+
+void buildFrames(const Currency &c) {
+  frameCount = 0;
+  snprintf(frames[frameCount++], sizeof(frames[0]), "%s", c.code);
+  if (c.nominal != 1) snprintf(frames[frameCount++], sizeof(frames[0]), "x%d", c.nominal);
+  snprintf(frames[frameCount++], sizeof(frames[0]), "%.2f", c.rate);
+  if (c.changePct > 0)      snprintf(frames[frameCount++], sizeof(frames[0]), "%c%.2f%%", CH_UP, c.changePct);
+  else if (c.changePct < 0) snprintf(frames[frameCount++], sizeof(frames[0]), "%c%.2f%%", CH_DOWN, -c.changePct);
+  else                      snprintf(frames[frameCount++], sizeof(frames[0]), "0.00%%");
+
+  // Весь цикл кадров укладываем в carousel_s
+  framePause = constrain((long)(carouselMs / frameCount) - FRAME_ANIM_MS, FRAME_PAUSE_MIN, FRAME_PAUSE_MAX);
 }
 
 void showCurrency(int i) {
   Currency &c = currencies[i];
-  if (c.nominal == 1) snprintf(text, sizeof(text), "%s %.2f %+.2f%%", c.code, c.rate, c.changePct);
-  else snprintf(text, sizeof(text), "%s/%d %.2f %+.2f%%", c.code, c.nominal, c.rate, c.changePct);
-  showText(text);
+  buildFrames(c);
+  frameIdx = 0;
+  showFrame(frames[0], framePause);
+  snprintf(text, sizeof(text), "%s x%d %.2f %+.2f%%", c.code, c.nominal, c.rate, c.changePct);
   targetAngle = angleFor(c.changePct);
   Serial.printf("[%s] %s  ->  angle %d\n", autoMode ? "AUTO" : "MANUAL", text, targetAngle);
 }
@@ -123,7 +199,7 @@ void updateButton() {
     longHandled = true;                           // удержание
     autoMode = !autoMode;
     lastSwitch = now;
-    showText(autoMode ? "AUTO" : "MANUAL");
+    showFrame(autoMode ? "Auto" : "Manual", MODE_MSG_PAUSE);  // "MANUAL" заглавными не влезает в 32 точки
     modeMsgPending = true;
   }
   if (btnPrev == LOW && btn == HIGH) {          // отпустили
@@ -146,6 +222,8 @@ void setup() {
 
   matrix.begin();
   matrix.setIntensity(4);
+  matrix.addChar(CH_UP, arrowUp);
+  matrix.addChar(CH_DOWN, arrowDown);
 
   Serial.println("Valutny fluger: MVP started");
   showCurrency(current);
@@ -155,14 +233,18 @@ void setup() {
 void loop() {
   updateButton();
 
-  if (autoMode && millis() - lastSwitch >= carouselMs) nextCurrency();
-
-  if (matrix.displayAnimate()) {     // строка доехала до конца
-    if (modeMsgPending) {            // после AUTO/MANUAL вернуть валюту
+  if (matrix.displayAnimate()) {     // кадр въехал, постоял и уехал
+    unsigned long cycleMs = frameCount * (framePause + FRAME_ANIM_MS);
+    if (modeMsgPending) {            // после Auto/Manual вернуть валюту
       modeMsgPending = false;
       showCurrency(current);
+    } else if (++frameIdx < frameCount) {
+      showFrame(frames[frameIdx], framePause);
+    } else if (autoMode && millis() - lastSwitch + cycleMs / 2 >= carouselMs) {
+      nextCurrency();                // валюту меняем только между циклами кадров
     } else {
-      matrix.displayReset();         // повторить бегущую строку
+      frameIdx = 0;                  // ручной режим или carousel_s длинный — цикл заново
+      showFrame(frames[0], framePause);
     }
   }
 
