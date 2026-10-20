@@ -18,9 +18,11 @@ const int LED_UP_PIN = 26;
 const int BUZZER_PIN = 25;
 const int BUTTON_PIN = 14;
 const int MATRIX_CS_PIN = 5;
+const int CHART_CS_PIN = 4;
 
 const int MATRIX_MODULES = 8;
 const int MATRIX_WIDTH = MATRIX_MODULES * 8;
+const int CHART_MODULES = 4;
 
 const float SCALE_PERCENT = 3.0;
 const unsigned long LONG_PRESS_MS = 800;
@@ -32,17 +34,17 @@ const uint16_t HTTP_TIMEOUT_MS = 3000;
 const uint16_t MODE_MESSAGE_MS = 1500;
 const unsigned long SERVO_STEP_MS = 15;
 const unsigned long BLINK_MS = 300;
-const unsigned long BEEP_MS = 120;
+const unsigned long BEEP_MS = 250;
 const int BEEP_COUNT = 3;
 const int BUZZER_FREQ = 2000;
 const int BUZZER_DUTY = 512;
 
 const int HISTORY_SIZE = 8;
 const int BAR_LEVELS = 8;
-const int BAR_WIDTH = 6;
+const int BAR_WIDTH = 3;
 const char BAR_FIRST = 16;
 
-const int MAX_FRAMES = 4;
+const int MAX_FRAMES = 3;
 const int FRAME_SIZE = 32;
 
 const char ARROW_UP = 1;
@@ -89,6 +91,7 @@ float alertPercent = 1.0;
 unsigned long carouselMs = 10000;
 
 MD_Parola matrix(MD_MAX72XX::FC16_HW, MATRIX_CS_PIN, MATRIX_MODULES);
+MD_Parola chart(MD_MAX72XX::FC16_HW, CHART_CS_PIN, CHART_MODULES);
 Servo servo;
 ESP32PWM buzzer;
 
@@ -104,6 +107,7 @@ int beepStep = BEEP_COUNT * 2;
 unsigned long beepStepTime = 0;
 
 char frames[MAX_FRAMES][FRAME_SIZE];
+char chartText[HISTORY_SIZE + 1];
 int frameCount = 0;
 int frameIndex = 0;
 char shownText[FRAME_SIZE];
@@ -183,7 +187,7 @@ void makeBarShapes() {
 void addCustomChars() {
   makeBarShapes();
   for (int level = 0; level < BAR_LEVELS; level++) {
-    matrix.addChar(BAR_FIRST + level, barShapes[level]);
+    chart.addChar(BAR_FIRST + level, barShapes[level]);
   }
   matrix.addChar(ARROW_UP, arrowUpShape);
   matrix.addChar(ARROW_DOWN, arrowDownShape);
@@ -231,6 +235,15 @@ void makeChartText(const Currency& currency, char* text) {
   text[currency.historyCount] = '\0';
 }
 
+void showChart(const Currency& currency) {
+  chartText[0] = '\0';
+  if (currency.historyCount >= 2) {
+    makeChartText(currency, chartText);
+  }
+  chart.displayClear();
+  chart.displayText(chartText, PA_CENTER, 0, 0, PA_PRINT, PA_NO_EFFECT);
+}
+
 void makeFrames(const Currency& currency) {
   char rateText[20];
   char changeText[11];
@@ -244,11 +257,6 @@ void makeFrames(const Currency& currency) {
     strlcpy(frames[0], rateText, FRAME_SIZE);
     strlcpy(frames[1], changeText, FRAME_SIZE);
     frameCount = 2;
-  }
-
-  if (currency.historyCount >= 2) {
-    makeChartText(currency, frames[frameCount]);
-    frameCount++;
   }
 
   if (!serverOk) {
@@ -292,6 +300,7 @@ void stopBeeps() {
 void showCurrency(int index) {
   Currency& currency = currencies[index];
   makeFrames(currency);
+  showChart(currency);
   frameIndex = 0;
   showText(frames[0], framePause);
   servoTarget = angleForRate(currency);
@@ -411,6 +420,7 @@ void refreshCurrentCurrency() {
     currentIndex = 0;
   }
   makeFrames(currencies[currentIndex]);
+  showChart(currencies[currentIndex]);
   servoTarget = angleForRate(currencies[currentIndex]);
 }
 
@@ -577,6 +587,8 @@ void setup() {
 
   matrix.begin();
   matrix.setIntensity(4);
+  chart.begin();
+  chart.setIntensity(4);
   addCustomChars();
 
   Serial.println("Valutny fluger: started");
@@ -590,6 +602,7 @@ void loop() {
   updateButton();
   updateNetwork();
   updateMatrix();
+  chart.displayAnimate();
   updateServo();
   updateLeds();
   updateBuzzer();

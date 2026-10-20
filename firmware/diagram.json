@@ -5,6 +5,7 @@
   "parts": [
     {"type": "board-esp32-devkit-c-v4", "id": "esp", "top": 150, "left": 268, "attrs": {}},
     {"type": "wokwi-max7219-matrix", "id": "matrix1", "top": 0, "left": 0, "attrs": {"chain": "8", "layout": "fc16"}},
+    {"type": "wokwi-max7219-matrix", "id": "matrix2", "top": -120, "left": 400, "attrs": {"chain": "4", "layout": "fc16"}},
     {"type": "wokwi-servo", "id": "servo1", "top": 200, "left": 520, "attrs": {}},
     {"type": "wokwi-buzzer", "id": "bz1", "top": 455, "left": 425, "attrs": {}},
     {"type": "wokwi-led", "id": "ledUp", "top": 470, "left": 590, "attrs": {"color": "limegreen"}},
@@ -14,6 +15,11 @@
   "connections": [
     ["esp:TX", "$serialMonitor:RX", "", []],
     ["esp:RX", "$serialMonitor:TX", "", []],
+    ["matrix2:VCC", "matrix1:VCC", "red", []],
+    ["matrix2:GND", "matrix1:GND", "black", []],
+    ["matrix2:DIN", "matrix1:DIN", "blue", []],
+    ["matrix2:CLK", "matrix1:CLK", "yellow", []],
+    ["matrix2:CS", "esp:4", "cyan", []],
     ["matrix1:DIN", "esp:23", "blue", ["h34.5", "v77.2", "h-275", "v73.4", "h-31.2"]],
     ["matrix1:CS", "esp:5", "green", ["h24.5", "v57.6", "h-235", "v160.2", "h-61.2"]],
     ["matrix1:CLK", "esp:18", "yellow", ["h14.5", "v38", "h-235", "v160.6", "h-51.2"]],
@@ -32,4 +38,3 @@
   ],
   "dependencies": {}
 }
-
