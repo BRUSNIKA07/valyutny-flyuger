@@ -6,9 +6,8 @@
     {"type": "board-esp32-devkit-c-v4", "id": "esp", "top": 150, "left": 268, "attrs": {}},
     {"type": "wokwi-max7219-matrix", "id": "matrix1", "top": 0, "left": 0, "attrs": {"chain": "8", "layout": "fc16"}},
     {"type": "wokwi-servo", "id": "servo1", "top": 200, "left": 520, "attrs": {}},
-    {"type": "wokwi-led", "id": "ledDown", "top": 470, "left": 520, "attrs": {"color": "red"}},
+    {"type": "wokwi-buzzer", "id": "bz1", "top": 455, "left": 425, "attrs": {}},
     {"type": "wokwi-led", "id": "ledUp", "top": 470, "left": 590, "attrs": {"color": "limegreen"}},
-    {"type": "wokwi-resistor", "id": "r2", "top": 558.6, "left": 515.45, "rotate": 270, "attrs": {"value": "220"}},
     {"type": "wokwi-resistor", "id": "r1", "top": 558.6, "left": 585.45, "rotate": 270, "attrs": {"value": "220"}},
     {"type": "wokwi-pushbutton", "id": "btn1", "top": 390, "left": 120, "attrs": {"color": "blue"}}
   ],
@@ -26,11 +25,11 @@
     ["esp:26", "r1:1", "green", ["h-187.6", "v354.8", "h530", "v-26.2"]],
     ["r1:2", "ledUp:A", "green", ["v-23"]],
     ["ledUp:C", "esp:GND.2", "black", ["h-20", "v-62", "h-525", "v-320", "h325", "v48.8", "h-16.2"]],
-    ["esp:27", "r2:1", "red", ["h-177.6", "v335.2", "h450", "v-16.2"]],
-    ["r2:2", "ledDown:A", "red", ["v-23"]],
-    ["ledDown:C", "esp:GND.2", "black", ["h-20", "v-62", "h-455", "v-320", "h325", "v48.8", "h-16.2"]],
+    ["esp:25", "bz1:2", "magenta", ["h-197.6", "v374.4", "h387", "v-91"]],
+    ["bz1:1", "esp:GND.2", "black", ["v8", "h-37", "v-97", "h-355", "v-320", "h325", "v48.8", "h-16.2"]],
     ["btn1:1.l", "esp:14", "purple", ["h-15", "v-118.6", "h167.6"]],
     ["btn1:2.l", "esp:GND.2", "black", ["h-8", "v28", "h-52", "v-320", "h325", "v48.8", "h-16.2"]]
   ],
   "dependencies": {}
 }
+

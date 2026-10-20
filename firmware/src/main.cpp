@@ -15,14 +15,14 @@
 
 const int SERVO_PIN = 13;
 const int LED_UP_PIN = 26;
-const int LED_DOWN_PIN = 27;
+const int BUZZER_PIN = 25;
 const int BUTTON_PIN = 14;
 const int MATRIX_CS_PIN = 5;
 
 const int MATRIX_MODULES = 8;
 const int MATRIX_WIDTH = MATRIX_MODULES * 8;
 
-const float SCALE_PERCENT = 2.0;
+const float SCALE_PERCENT = 3.0;
 const unsigned long LONG_PRESS_MS = 800;
 const unsigned long DEBOUNCE_MS = 30;
 const unsigned long POLL_INTERVAL_MS = 60000;
@@ -32,6 +32,18 @@ const uint16_t HTTP_TIMEOUT_MS = 3000;
 const uint16_t MODE_MESSAGE_MS = 1500;
 const unsigned long SERVO_STEP_MS = 15;
 const unsigned long BLINK_MS = 300;
+const unsigned long BEEP_MS = 120;
+const int BEEP_COUNT = 3;
+const int BUZZER_FREQ = 2000;
+const int BUZZER_DUTY = 512;
+
+const int HISTORY_SIZE = 8;
+const int BAR_LEVELS = 8;
+const int BAR_WIDTH = 6;
+const char BAR_FIRST = 16;
+
+const int MAX_FRAMES = 4;
+const int FRAME_SIZE = 32;
 
 const char ARROW_UP = 1;
 const char ARROW_DOWN = 2;
@@ -52,21 +64,24 @@ const uint8_t digitShapes[10][4] = {
   {3, 0x7F, 0x49, 0x7F},
   {3, 0x4F, 0x49, 0x7F},
 };
+uint8_t barShapes[BAR_LEVELS][BAR_WIDTH + 1];
 
 struct Currency {
   char code[8];
   int nominal;
   float rate;
   float changePercent;
+  float history[HISTORY_SIZE];
+  int historyCount;
 };
 
 const int MAX_CURRENCIES = 10;
 Currency currencies[MAX_CURRENCIES] = {
-  {"CNY", 1, 11.50, 0.42},
-  {"USD", 1, 82.10, -0.35},
-  {"EUR", 1, 95.30, 1.25},
-  {"KZT", 100, 16.20, -0.10},
-  {"MNT", 100, 2.40, -1.60},
+  {"CNY", 1, 11.50, 0.44, {11.38, 11.40, 11.42, 11.41, 11.44, 11.46, 11.45, 11.50}, 8},
+  {"USD", 1, 82.10, -0.35, {83.40, 83.10, 82.90, 82.70, 82.60, 82.50, 82.39, 82.10}, 8},
+  {"EUR", 1, 95.30, 1.25, {93.80, 94.00, 94.20, 94.10, 94.30, 94.60, 94.12, 95.30}, 8},
+  {"KZT", 100, 16.20, -0.12, {16.40, 16.38, 16.35, 16.30, 16.28, 16.25, 16.22, 16.20}, 8},
+  {"MNT", 100, 2.40, -1.64, {2.48, 2.47, 2.47, 2.46, 2.45, 2.45, 2.44, 2.40}, 8},
 };
 int currencyCount = 5;
 
@@ -75,6 +90,7 @@ unsigned long carouselMs = 10000;
 
 MD_Parola matrix(MD_MAX72XX::FC16_HW, MATRIX_CS_PIN, MATRIX_MODULES);
 Servo servo;
+ESP32PWM buzzer;
 
 int currentIndex = 0;
 bool autoMode = true;
@@ -84,10 +100,13 @@ int servoAngle = 90;
 int servoTarget = 90;
 unsigned long lastServoStepTime = 0;
 
-char frames[3][28];
+int beepStep = BEEP_COUNT * 2;
+unsigned long beepStepTime = 0;
+
+char frames[MAX_FRAMES][FRAME_SIZE];
 int frameCount = 0;
 int frameIndex = 0;
-char shownText[28];
+char shownText[FRAME_SIZE];
 unsigned long framePause = 2000;
 bool modeMessageShown = false;
 
@@ -107,14 +126,38 @@ const char* modeName() {
   return "MANUAL";
 }
 
-int angleForChange(float percent) {
+float historyAverage(const Currency& currency) {
+  if (currency.historyCount == 0) {
+    return currency.rate;
+  }
+  float sum = 0;
+  for (int i = 0; i < currency.historyCount; i++) {
+    sum += currency.history[i];
+  }
+  return sum / currency.historyCount;
+}
+
+int angleForRate(const Currency& currency) {
+  float average = historyAverage(currency);
+  float percent = 0;
+  if (average > 0) {
+    percent = (currency.rate - average) / average * 100.0;
+  }
   if (percent > SCALE_PERCENT) {
     percent = SCALE_PERCENT;
   }
   if (percent < -SCALE_PERCENT) {
     percent = -SCALE_PERCENT;
   }
-  return 90 + (int)(percent / SCALE_PERCENT * 90.0);
+  return 90 + (int)round(percent / SCALE_PERCENT * 90.0);
+}
+
+bool isRising(const Currency& currency) {
+  return currency.changePercent >= alertPercent;
+}
+
+bool isFalling(const Currency& currency) {
+  return currency.changePercent <= -alertPercent;
 }
 
 char arrowForChange(float percent) {
@@ -127,7 +170,21 @@ char arrowForChange(float percent) {
   return ' ';
 }
 
+void makeBarShapes() {
+  for (int level = 1; level <= BAR_LEVELS; level++) {
+    uint8_t column = (uint8_t)(0xFF << (8 - level));
+    barShapes[level - 1][0] = BAR_WIDTH;
+    for (int i = 1; i <= BAR_WIDTH; i++) {
+      barShapes[level - 1][i] = column;
+    }
+  }
+}
+
 void addCustomChars() {
+  makeBarShapes();
+  for (int level = 0; level < BAR_LEVELS; level++) {
+    matrix.addChar(BAR_FIRST + level, barShapes[level]);
+  }
   matrix.addChar(ARROW_UP, arrowUpShape);
   matrix.addChar(ARROW_DOWN, arrowDownShape);
   for (int digit = 0; digit < 10; digit++) {
@@ -156,23 +213,46 @@ void makeChangeText(const Currency& currency, char* text, int size) {
   snprintf(text, size, "%c%.2f", arrow, fabs(currency.changePercent));
 }
 
+void makeChartText(const Currency& currency, char* text) {
+  float low = currency.history[0];
+  float high = currency.history[0];
+  for (int i = 1; i < currency.historyCount; i++) {
+    low = min(low, currency.history[i]);
+    high = max(high, currency.history[i]);
+  }
+
+  for (int i = 0; i < currency.historyCount; i++) {
+    int level = BAR_LEVELS / 2;
+    if (high > low) {
+      level = 1 + (int)round((currency.history[i] - low) / (high - low) * (BAR_LEVELS - 1));
+    }
+    text[i] = BAR_FIRST + level - 1;
+  }
+  text[currency.historyCount] = '\0';
+}
+
 void makeFrames(const Currency& currency) {
-  char rateText[24];
-  char changeText[12];
+  char rateText[20];
+  char changeText[11];
   makeRateText(currency, rateText, sizeof(rateText));
   makeChangeText(currency, changeText, sizeof(changeText));
 
-  snprintf(frames[0], sizeof(frames[0]), "%s %s", rateText, changeText);
+  snprintf(frames[0], FRAME_SIZE, "%s %s", rateText, changeText);
   if (matrix.getTextColumns(frames[0]) <= MATRIX_WIDTH) {
     frameCount = 1;
   } else {
-    strlcpy(frames[0], rateText, sizeof(frames[0]));
-    strlcpy(frames[1], changeText, sizeof(frames[1]));
+    strlcpy(frames[0], rateText, FRAME_SIZE);
+    strlcpy(frames[1], changeText, FRAME_SIZE);
     frameCount = 2;
   }
 
+  if (currency.historyCount >= 2) {
+    makeChartText(currency, frames[frameCount]);
+    frameCount++;
+  }
+
   if (!serverOk) {
-    strlcpy(frames[frameCount], "no link", sizeof(frames[0]));
+    strlcpy(frames[frameCount], "no link", FRAME_SIZE);
     frameCount++;
   }
 
@@ -183,8 +263,30 @@ void makeFrames(const Currency& currency) {
 }
 
 void printCurrency(const Currency& currency) {
-  Serial.printf("[%s] %s x%d %.2f %+.2f%%  ->  angle %d\r\n", modeName(), currency.code,
-                currency.nominal, currency.rate, currency.changePercent, servoTarget);
+  Serial.printf("%s x%d %.2f %+.2f%%  avg %.2f  ->  angle %d\r\n", currency.code, currency.nominal,
+                currency.rate, currency.changePercent, historyAverage(currency), angleForRate(currency));
+}
+
+void printAllCurrencies() {
+  for (int i = 0; i < currencyCount; i++) {
+    Serial.print("[data] ");
+    printCurrency(currencies[i]);
+  }
+}
+
+void setBuzzer(bool on) {
+  buzzer.write(on ? BUZZER_DUTY : 0);
+}
+
+void startBeeps() {
+  beepStep = 0;
+  beepStepTime = millis();
+  setBuzzer(true);
+}
+
+void stopBeeps() {
+  beepStep = BEEP_COUNT * 2;
+  setBuzzer(false);
 }
 
 void showCurrency(int index) {
@@ -192,8 +294,14 @@ void showCurrency(int index) {
   makeFrames(currency);
   frameIndex = 0;
   showText(frames[0], framePause);
-  servoTarget = angleForChange(currency.changePercent);
+  servoTarget = angleForRate(currency);
+  Serial.printf("[%s] ", modeName());
   printCurrency(currency);
+  if (isFalling(currency)) {
+    startBeeps();
+  } else {
+    stopBeeps();
+  }
 }
 
 void showNextCurrency() {
@@ -222,6 +330,21 @@ void readCurrency(JsonObject item, Currency& currency) {
   currency.changePercent = 0.0;
   if (item["change"].is<float>()) {
     currency.changePercent = item["change"].as<float>();
+  }
+
+  currency.historyCount = 0;
+  JsonArray history = item["history"];
+  int skip = 0;
+  if ((int)history.size() > HISTORY_SIZE) {
+    skip = history.size() - HISTORY_SIZE;
+  }
+  for (JsonVariant value : history) {
+    if (skip > 0) {
+      skip--;
+    } else if (value.is<float>()) {
+      currency.history[currency.historyCount] = value.as<float>();
+      currency.historyCount++;
+    }
   }
 }
 
@@ -288,7 +411,7 @@ void refreshCurrentCurrency() {
     currentIndex = 0;
   }
   makeFrames(currencies[currentIndex]);
-  servoTarget = angleForChange(currencies[currentIndex].changePercent);
+  servoTarget = angleForRate(currencies[currentIndex]);
 }
 
 void printWifiStatus(wl_status_t status) {
@@ -306,6 +429,7 @@ void pollServer() {
   bool ok = downloadRates();
   if (ok) {
     Serial.printf("[net] %s: ok\r\n", SERVER_URL);
+    printAllCurrencies();
   } else {
     Serial.printf("[net] %s: no link\r\n", SERVER_URL);
   }
@@ -355,13 +479,21 @@ void updateServo() {
 }
 
 void updateLeds() {
-  float percent = currencies[currentIndex].changePercent;
-  bool lightOn = true;
-  if (fabs(percent) >= alertPercent) {
-    lightOn = (millis() / BLINK_MS) % 2;
+  Currency& currency = currencies[currentIndex];
+  bool blinkOn = (millis() / BLINK_MS) % 2;
+  digitalWrite(LED_UP_PIN, (isRising(currency) && blinkOn) ? HIGH : LOW);
+}
+
+void updateBuzzer() {
+  if (beepStep >= BEEP_COUNT * 2) {
+    return;
   }
-  digitalWrite(LED_UP_PIN, (percent > 0 && lightOn) ? HIGH : LOW);
-  digitalWrite(LED_DOWN_PIN, (percent < 0 && lightOn) ? HIGH : LOW);
+  if (millis() - beepStepTime < BEEP_MS) {
+    return;
+  }
+  beepStepTime = millis();
+  beepStep++;
+  setBuzzer(beepStep < BEEP_COUNT * 2 && beepStep % 2 == 0);
 }
 
 void onLongPress(unsigned long now) {
@@ -436,11 +568,12 @@ void startWifi() {
 void setup() {
   Serial.begin(115200);
   pinMode(LED_UP_PIN, OUTPUT);
-  pinMode(LED_DOWN_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
   servo.attach(SERVO_PIN);
   servo.write(servoAngle);
+  buzzer.attachPin(BUZZER_PIN, BUZZER_FREQ, 10);
+  setBuzzer(false);
 
   matrix.begin();
   matrix.setIntensity(4);
@@ -459,4 +592,5 @@ void loop() {
   updateMatrix();
   updateServo();
   updateLeds();
+  updateBuzzer();
 }
