@@ -42,6 +42,9 @@ def test_make_rate_takes_last_8():
     assert rate["rate"] == rate["history"][-1] == 81.9876
     assert rate["dates"][0] == "2026-10-09"
     assert rate["dates"][-1] == "2026-10-20"
+    assert len(rate["history_long"]) == 15
+    assert rate["history_long"][-8:] == rate["history"]
+    assert rate["dates_long"][-1] == "2026-10-20"
     assert rate["change"] == -0.49
     assert rate["nominal"] == 1
 
@@ -68,7 +71,7 @@ def test_load_rates_without_network(monkeypatch):
     result = cbr.load_rates()
     assert result["date"] == "2026-10-20"
     assert [r["code"] for r in result["rates"]] == cbr.CODES
-    assert "date_req1=30/09/2026&date_req2=20/10/2026&VAL_NM_RQ=R01235" in urls[2]
+    assert "date_req1=31/08/2026&date_req2=20/10/2026&VAL_NM_RQ=R01235" in urls[2]
     usd = result["rates"][1]
     assert usd["rate"] == 81.9876
     assert len(usd["history"]) == 8

@@ -35,3 +35,7 @@ cd server
 Симуляция: в VS Code открыть папку `firmware`, собрать проект (PlatformIO: Build), потом F1 → «Wokwi: Start Simulator». Сервер в это время должен работать.
 
 Подробнее про устройство — `firmware/README.md`, про сервер — `server/README.md`, как всё связано — `docs/architecture.md`.
+
+## Публичная витрина
+
+Сайт также публикуется на GitHub Pages: https://brusnika07.github.io/valyutny-flyuger/ — он открывается у любого человека, даже когда наш сервер и устройство выключены. Раз в час и после каждого пуша в `main` GitHub Actions (`.github/workflows/showcase.yml`) берёт свежие курсы ЦБ (если ЦБ не отвечает — с зеркала cbr-xml-daily.ru), собирает сайт командой `python -m app.showcase` и выкладывает его. На витрине настройки только для просмотра, менять их можно на домашнем сервере.

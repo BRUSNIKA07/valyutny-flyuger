@@ -7,325 +7,462 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f59e0b'/%3E%3Cpath d='M10 26V7h12l-3 5 3 5H10' fill='none' stroke='%23fff' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
 :root {
-  --bg: #0c0f14;
-  --card: #131820;
-  --card2: #0e1218;
-  --line: #1f2632;
-  --text: #e6e9ef;
-  --muted: #7c8598;
+  --bg: #0b0e13;
+  --panel: #12161d;
+  --panel2: #171c25;
+  --line: #222935;
+  --text: #e8ebf1;
+  --muted: #7d8696;
+  --dim: #555e6e;
   --accent: #f59e0b;
-  --up: #34d399;
-  --down: #f87171;
+  --up: #16c784;
+  --down: #ea3943;
   --led: #ff4d3d;
+  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", Inter, system-ui, sans-serif; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 Inter, "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 a { color: var(--accent); text-decoration: none; }
-.page { max-width: 1180px; margin: 0 auto; padding: 22px 16px 48px; }
-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; }
-.logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
-.logo i { width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #f59e0b, #ef4444); display: grid; place-items: center; }
-.tabs { display: flex; background: #151a22; border: 1px solid var(--line); border-radius: 10px; padding: 3px; overflow-x: auto; }
-.tabs a { padding: 7px 16px; border-radius: 7px; color: #8b94a7; font-weight: 600; white-space: nowrap; }
-.tabs a.active { background: #232a36; color: #fff; }
-.status { color: var(--muted); font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
-.dot::before { content: "●"; margin-right: 5px; }
-.ok { color: var(--up); }
-.warn { color: var(--accent); }
-.bad { color: var(--down); }
-.k { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
-.tile { background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+button { font: inherit; color: inherit; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .up { color: var(--up); }
 .down { color: var(--down); }
 .flat { color: var(--muted); }
 .hidden { display: none !important; }
-.error { margin-top: 16px; background: #2a1517; color: var(--down); border: 1px solid #5b2a2a; padding: 12px 16px; border-radius: 12px; }
-h2 { margin: 0 0 4px; font-size: 20px; }
-.lead { color: var(--muted); margin: 0 0 18px; }
+.k { font-size: 11px; color: var(--muted); }
 
-section { margin-top: 22px; }
-.list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-.item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; transition: border-color .15s, transform .15s; }
-.item:hover { transform: translateY(-2px); }
-.item.active { border-color: var(--accent); background: #1a1810; }
-.item .top { display: flex; justify-content: space-between; font-weight: 700; }
-.item .top span { font-size: 12px; }
-.item .val { font-size: 18px; font-weight: 600; }
-.item .per { font-size: 11px; color: var(--muted); font-weight: 400; }
-.item svg { display: block; width: 100%; height: 22px; margin-top: 4px; }
+.top { position: sticky; top: 0; z-index: 10; background: rgba(11, 14, 19, .92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.bar { display: flex; align-items: center; gap: 24px; height: 56px; padding: 0 20px; }
+.logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 15px; white-space: nowrap; }
+.logo i { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #f59e0b, #ef4444); display: grid; place-items: center; }
+nav { display: flex; gap: 4px; height: 100%; }
+nav a { display: flex; align-items: center; padding: 0 12px; color: var(--muted); font-weight: 600; font-size: 14px; border-bottom: 2px solid transparent; }
+nav a:hover { color: var(--text); }
+nav a.active { color: var(--text); border-bottom-color: var(--accent); }
+.right { margin-left: auto; display: flex; align-items: center; gap: 16px; color: var(--muted); white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: var(--panel2); border: 1px solid var(--line); font-size: 12px; }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c, var(--muted)); }
+.clock b { color: var(--text); font-family: var(--mono); font-weight: 500; }
 
-.two { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; }
-.device { background: radial-gradient(120% 120% at 0 0, #1a2130 0, #11151c 60%); }
-.big-matrix { margin-top: 10px; background: #050608; border: 1px solid #1d222b; border-radius: 8px; padding: 10px 14px; font: 700 30px Consolas, monospace; letter-spacing: 3px; color: var(--led); text-shadow: 0 0 10px #ff4d3d90; -webkit-mask: radial-gradient(circle, #000 58%, transparent 62%) 0 0 / 4px 4px; mask: radial-gradient(circle, #000 58%, transparent 62%) 0 0 / 4px 4px; white-space: nowrap; overflow: hidden; }
-.small-matrix { display: grid; grid-auto-flow: column; grid-template-rows: repeat(8, 6px); gap: 2px; width: fit-content; margin-top: 10px; background: #050608; padding: 10px; border-radius: 8px; border: 1px solid #1d222b; }
-.small-matrix i { width: 6px; height: 6px; border-radius: 50%; background: #171b22; }
-.small-matrix i.on { background: var(--led); box-shadow: 0 0 4px var(--led); }
-.row3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin-top: 16px; }
-.row3 .tile b { display: block; font-size: 16px; margin-top: 4px; }
-.row3 .tile small { color: var(--muted); }
-.gauge svg { display: block; max-width: 240px; margin: 0 auto; }
-.led { width: 22px; height: 22px; border-radius: 50%; background: #16301f; border: 2px solid #22303d; margin-top: 8px; }
-.led.on { background: #22c55e; box-shadow: 0 0 14px #22c55e; animation: blink .6s steps(1) infinite; }
+.tape { border-top: 1px solid var(--line); overflow: hidden; height: 34px; position: relative; }
+.tape-inner { display: flex; width: max-content; animation: tape 40s linear infinite; height: 100%; }
+.tape:hover .tape-inner { animation-play-state: paused; }
+.tape-item { display: flex; align-items: center; gap: 8px; padding: 0 22px; border-right: 1px solid var(--line); cursor: pointer; white-space: nowrap; }
+.tape-item b { font-weight: 600; }
+@keyframes tape { to { transform: translateX(-50%); } }
+
+.wrap { padding: 16px 20px 40px; max-width: 1600px; margin: 0 auto; }
+.error { background: #2a1416; color: #ff8a92; border: 1px solid #55252a; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.panel-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); font-weight: 600; font-size: 14px; }
+.panel-b { padding: 14px; }
+
+.market { display: grid; grid-template-columns: 290px minmax(0, 1fr) 320px; gap: 12px; }
+.watch-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); cursor: pointer; border-left: 2px solid transparent; }
+.watch-row:last-child { border-bottom: 0; }
+.watch-row:hover { background: var(--panel2); }
+.watch-row.active { background: var(--panel2); border-left-color: var(--accent); }
+.watch-row .code { font-weight: 700; font-size: 14px; }
+.watch-row .code span { color: var(--muted); font-weight: 500; font-size: 12px; }
+.watch-row .price { text-align: right; font-size: 14px; }
+.watch-row .name { color: var(--muted); font-size: 12px; }
+.watch-row .pct { text-align: right; font-size: 12px; }
+
+.flash-up { animation: flashUp 1.2s; }
+.flash-down { animation: flashDown 1.2s; }
+@keyframes flashUp { 0% { background: rgba(22, 199, 132, .25); } 100% { background: transparent; } }
+@keyframes flashDown { 0% { background: rgba(234, 57, 67, .25); } 100% { background: transparent; } }
+
+.quote { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 28px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.pair { font-size: 20px; font-weight: 700; }
+.pair small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; }
+.last { font-size: 28px; font-weight: 600; line-height: 1.1; padding: 0 4px; border-radius: 4px; }
+.delta { font-size: 14px; }
+.stat-strip { display: flex; gap: 24px; flex-wrap: wrap; }
+.stat-strip div { display: flex; flex-direction: column; }
+.stat-strip b { font-weight: 500; font-size: 13px; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.seg { display: flex; gap: 2px; }
+.seg button { background: none; border: 0; color: var(--muted); padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 12px; }
+.seg button:hover { color: var(--text); }
+.seg button.active { background: var(--panel2); color: var(--text); }
+.chart-box { position: relative; }
+.chart-box svg { display: block; width: 100%; user-select: none; }
+.legend-line { position: absolute; left: 14px; top: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.legend-line b { color: var(--text); font-weight: 500; }
+
+.conv label { display: block; margin-bottom: 10px; }
+.conv .field { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-top: 4px; }
+.conv .field:focus-within { border-color: var(--accent); }
+.conv input, .conv select { background: transparent; border: 0; color: var(--text); font: 500 16px var(--mono); padding: 10px 12px; outline: none; min-width: 0; }
+.conv input { flex: 1; }
+.conv select { font: 600 14px Inter, "Segoe UI", sans-serif; border-left: 1px solid var(--line); cursor: pointer; }
+.conv select option { background: var(--panel); }
+.swap { display: block; margin: -2px auto 8px; width: 32px; height: 32px; border-radius: 50%; background: var(--panel2); border: 1px solid var(--line); cursor: pointer; }
+.swap:hover { border-color: var(--accent); }
+.conv-note { color: var(--muted); font-size: 12px; }
+
+.mini-matrix { background: #050608; border: 1px solid #1d222b; border-radius: 6px; padding: 8px 10px; font: 700 18px Consolas, monospace; letter-spacing: 2px; color: var(--led); text-shadow: 0 0 8px #ff4d3d90; -webkit-mask: radial-gradient(circle, #000 58%, transparent 62%) 0 0 / 3px 3px; mask: radial-gradient(circle, #000 58%, transparent 62%) 0 0 / 3px 3px; white-space: nowrap; overflow: hidden; }
+.big-matrix { background: #050608; border: 1px solid #1d222b; border-radius: 8px; padding: 10px 14px; font: 700 30px Consolas, monospace; letter-spacing: 3px; color: var(--led); text-shadow: 0 0 10px #ff4d3d90; -webkit-mask: radial-gradient(circle, #000 58%, transparent 62%) 0 0 / 4px 4px; mask: radial-gradient(circle, #000 58%, transparent 62%) 0 0 / 4px 4px; white-space: nowrap; overflow: hidden; }
+.dots { display: grid; grid-auto-flow: column; grid-template-rows: repeat(8, var(--d, 4px)); gap: 1.5px; width: fit-content; background: #050608; padding: 7px; border-radius: 6px; border: 1px solid #1d222b; margin-top: 8px; }
+.dots i { width: var(--d, 4px); height: var(--d, 4px); border-radius: 50%; background: #171b22; }
+.dots i.on { background: var(--led); box-shadow: 0 0 3px var(--led); }
+.dev-line { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.dev-line:first-of-type { border-top: 0; }
+.dev-line .ico { width: 30px; display: grid; place-items: center; flex: none; }
+.dev-line b { display: block; font-weight: 600; }
+.led { width: 16px; height: 16px; border-radius: 50%; background: #16301f; border: 2px solid #26303d; }
+.led.on { background: var(--up); box-shadow: 0 0 10px var(--up); animation: blink .6s steps(1) infinite; }
+.buzz { color: var(--dim); font-size: 16px; }
+.buzz.on { color: var(--down); animation: blink .6s steps(1) infinite; }
 @keyframes blink { 50% { opacity: .3; } }
-.buzz.on { border-color: #5b2a2a; background: #1a1012; }
-.notes { font-size: 22px; margin-top: 4px; color: #3a4252; }
-.buzz.on .notes { color: var(--down); }
-.bigrate { font-size: 44px; font-weight: 700; letter-spacing: -1px; line-height: 1.15; }
-.chart { display: block; width: 100%; }
-.chart-wrap { position: relative; }
-.tip { position: absolute; z-index: 2; pointer-events: none; background: #e6e9ef; color: #0c0f14; padding: 6px 10px; border-radius: 8px; font-size: 12px; width: max-content; max-width: 100%; transform: translate(-50%, -125%); }
-.more { display: inline-block; margin-top: 10px; font-weight: 600; font-size: 13px; }
 
-.pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.pill { border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
-.pill.active { border-color: var(--accent); color: var(--accent); background: #1a1810; }
-.explain { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
-.explain .tile b { display: block; margin-bottom: 4px; }
-.explain .tile p { margin: 0; color: var(--muted); font-size: 13px; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: left; }
-th { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
-td.n { white-space: nowrap; }
-tr.sel td { background: #1a1810; }
-.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 13px; }
-.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; background: var(--c); }
+.overview { margin-top: 12px; }
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th, .tbl td { padding: 10px 14px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.tbl th { color: var(--muted); font-weight: 500; font-size: 12px; cursor: pointer; user-select: none; }
+.tbl th:hover { color: var(--text); }
+.tbl th.sorted::after { content: " ↓"; color: var(--accent); }
+.tbl th.sorted.asc::after { content: " ↑"; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tbl tbody tr { cursor: pointer; }
+.tbl tbody tr:hover { background: var(--panel2); }
+.tbl tbody tr.active { background: #1a1810; }
+.tbl tr:last-child td { border-bottom: 0; }
+.scroll { overflow-x: auto; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--panel2); color: var(--muted); }
+.badge.on { color: var(--accent); background: #2a2110; }
+.pct-chip { display: inline-block; min-width: 72px; text-align: center; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+.pct-chip.up { background: rgba(22, 199, 132, .12); }
+.pct-chip.down { background: rgba(234, 57, 67, .12); }
+.pct-chip.flat { background: var(--panel2); }
 
-.form .field { padding: 16px 0; border-top: 1px solid var(--line); }
-.form .field:first-of-type { border-top: 0; padding-top: 0; }
-.form label { font-weight: 600; display: flex; justify-content: space-between; }
-.form label output { color: var(--accent); }
-.form p { margin: 4px 0 10px; color: var(--muted); font-size: 13px; }
+.page-h { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.page-h h1 { margin: 0; font-size: 20px; }
+.page-h p { margin: 2px 0 0; color: var(--muted); }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { background: var(--panel); border: 1px solid var(--line); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.pill.active { border-color: var(--accent); color: var(--accent); }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.device-hero { background: radial-gradient(120% 120% at 0 0, #1a2130 0, #11151c 60%); }
+.tiles { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 12px; margin-top: 14px; }
+.tile { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.tile b { display: block; font-size: 15px; margin-top: 4px; }
+.tile.alarm { border-color: #5b2a2a; background: #1a1012; }
+.gauge svg { display: block; max-width: 230px; margin: 0 auto; }
+.explain .tile b { margin: 0 0 4px; font-size: 14px; }
+.explain .tile p { margin: 0; color: var(--muted); }
+
+.form .row { padding: 16px 0; border-top: 1px solid var(--line); }
+.form .row:first-child { border-top: 0; padding-top: 0; }
+.form .row label { display: flex; justify-content: space-between; font-weight: 600; font-size: 14px; }
+.form .row label output { color: var(--accent); font-family: var(--mono); }
+.form .row p { margin: 4px 0 10px; color: var(--muted); }
 input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; user-select: none; }
-.chip input { accent-color: var(--accent); margin: 0; }
-.chip:has(input:checked) { border-color: var(--accent); background: #1a1810; }
-.preview { margin-top: 12px; background: var(--card2); border: 1px dashed var(--line); border-radius: 12px; padding: 12px; font-size: 13px; color: var(--muted); }
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.check { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; }
+.check input { accent-color: var(--accent); margin: 0; }
+.check:has(input:checked) { border-color: var(--accent); background: #1a1810; }
+.preview { margin-top: 10px; background: var(--bg); border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; color: var(--muted); }
 .preview b { color: var(--text); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.btn { border: 0; border-radius: 10px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
-.btn.main { background: var(--accent); color: #111; }
+.btn { border: 0; border-radius: 6px; padding: 9px 16px; font-weight: 600; cursor: pointer; background: var(--panel2); border: 1px solid var(--line); }
+.btn.main { background: var(--accent); border-color: var(--accent); color: #111; }
 .btn:disabled { opacity: .4; cursor: default; }
-.btn.ghost { background: #232a36; color: var(--text); }
-.kv { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); gap: 12px; }
-.kv:first-of-type { border-top: 0; }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+.kv:first-child { border-top: 0; }
 .kv span { color: var(--muted); }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #e6e9ef; color: #0c0f14; padding: 10px 18px; border-radius: 10px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
-.toast.show { opacity: 1; }
-footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 32px; }
+.toast { position: fixed; right: 20px; bottom: 20px; background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--up); padding: 12px 16px; border-radius: 8px; font-weight: 600; opacity: 0; transform: translateY(8px); transition: .2s; pointer-events: none; }
+.toast.show { opacity: 1; transform: none; }
+footer { color: var(--dim); font-size: 12px; text-align: center; margin-top: 28px; }
 
-@media (max-width: 900px) {
-  .list { grid-template-columns: repeat(3, 1fr); }
-  .two, .explain { grid-template-columns: minmax(0, 1fr); }
-  .big-matrix { font-size: 22px; }
+@media (max-width: 1280px) {
+  .market { grid-template-columns: 260px minmax(0, 1fr); }
+  .side { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .side .panel + .panel { margin-top: 0 !important; }
 }
-@media (max-width: 560px) {
-  .list { grid-template-columns: repeat(2, 1fr); }
-  .tabs { width: 100%; }
-  .tabs a { flex: 1; text-align: center; padding: 7px 6px; }
-  .row3 { grid-template-columns: 1fr; }
-  table { font-size: 13px; }
-  th, td { padding: 8px 6px; }
-  .bigrate { font-size: 34px; }
-  .big-matrix { font-size: 17px; letter-spacing: 2px; }
+@media (max-width: 900px) {
+  .bar { gap: 12px; padding: 0 12px; flex-wrap: wrap; height: auto; padding-top: 8px; }
+  nav { width: 100%; order: 3; overflow-x: auto; height: 40px; }
+  .right { margin-left: auto; }
+  .clock { display: none; }
+  .market, .grid2, .grid3, .side { grid-template-columns: minmax(0, 1fr); }
+  .tiles { grid-template-columns: 1fr; }
+  .wrap { padding: 12px; }
+  .big-matrix { font-size: 20px; }
 }
 </style>
 </head>
 <body>
-<div class="page">
-  <header>
+<div class="top">
+  <div class="bar">
     <div class="logo">
-      <i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4M4 5h11l-3 4 3 4H4"/></svg></i>
+      <i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4M4 5h11l-3 4 3 4H4"/></svg></i>
       Валютный флюгер
     </div>
-    <nav class="tabs">
-      <a href="#overview" data-tab="overview">Обзор</a>
+    <nav>
+      <a href="#market" data-tab="market">Рынок</a>
       <a href="#device" data-tab="device">Устройство</a>
-      <a href="#history" data-tab="history">История</a>
+      <a href="#analytics" data-tab="analytics">Аналитика</a>
       <a href="#settings" data-tab="settings">Настройки</a>
     </nav>
-    <div class="status">
-      <span id="sourceText">Загрузка…</span>
-      <span id="deviceText" class="dot">устройство</span>
+    <div class="right">
+      <span class="clock">Владивосток <b id="clockVl">--:--</b> · МСК <b id="clockMsk">--:--</b></span>
+      <span class="chip" id="sourceChip">загрузка</span>
+      <span class="chip" id="deviceChip">устройство</span>
     </div>
-  </header>
+  </div>
+  <div class="tape"><div class="tape-inner" id="tape"></div></div>
+</div>
 
+<div class="wrap">
   <div id="error" class="error hidden"></div>
 
-  <section id="tab-overview">
-    <div class="list" id="list"></div>
-    <div class="two">
-      <div class="card device">
-        <div class="k">Устройство сейчас · <span id="ovCode"></span></div>
-        <div class="big-matrix" id="ovMatrix"></div>
-        <div class="small-matrix" id="ovBars"></div>
-        <div class="row3">
-          <div class="tile"><div class="k">Флюгер</div><div class="gauge" id="ovGauge"></div><b id="ovAngle" style="text-align:center"></b></div>
-          <div class="tile"><div class="k">Светодиод роста</div><div class="led" id="ovLed"></div><b id="ovLedText"></b><small id="ovLedNote"></small></div>
-          <div class="tile buzz" id="ovBuzz"><div class="k">Пищалка</div><div class="notes">♪ ♪ ♪</div><b id="ovBuzzText"></b><small id="ovBuzzNote"></small></div>
-        </div>
-        <a class="more" href="#device">Подробнее об устройстве →</a>
+  <section id="tab-market">
+    <div class="market">
+      <div class="panel">
+        <div class="panel-h">Валюты к рублю <span class="k">ЦБ РФ</span></div>
+        <div id="watch"></div>
       </div>
-      <div class="card">
-        <div class="k" id="ovName"></div>
-        <div class="bigrate" id="ovRate"></div>
-        <div id="ovChanges"></div>
-        <div class="chart-wrap"><svg class="chart" id="ovChart" height="250"></svg><div class="tip hidden"></div></div>
-        <a class="more" href="#history">Вся история и таблица →</a>
+
+      <div class="panel">
+        <div class="quote">
+          <div class="pair" id="qPair"></div>
+          <div>
+            <div class="last num" id="qLast"></div>
+            <div class="delta num" id="qDelta"></div>
+          </div>
+          <div class="stat-strip" id="qStats"></div>
+        </div>
+        <div class="toolbar">
+          <div class="seg" id="periodSeg">
+            <button data-p="5">1Н</button>
+            <button data-p="10">2Н</button>
+            <button data-p="22">1М</button>
+            <button data-p="0">Всё</button>
+          </div>
+          <div class="seg" id="typeSeg">
+            <button data-t="area">Область</button>
+            <button data-t="line">Линия</button>
+            <button data-t="bars">Столбцы</button>
+          </div>
+        </div>
+        <div class="chart-box">
+          <div class="legend-line" id="chartLegend"></div>
+          <svg id="mainChart" height="460"></svg>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="panel">
+          <div class="panel-h">Конвертер</div>
+          <div class="panel-b conv">
+            <label><span class="k">Отдаю</span>
+              <div class="field"><input id="convAmount" inputmode="decimal" value="100"><select id="convFrom"></select></div>
+            </label>
+            <button class="swap" id="convSwap" title="Поменять местами">⇅</button>
+            <label><span class="k">Получаю</span>
+              <div class="field"><input id="convResult" readonly><select id="convTo"></select></div>
+            </label>
+            <div class="conv-note" id="convNote"></div>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:12px">
+          <div class="panel-h">Устройство <a href="#device" style="font-size:12px">подробнее →</a></div>
+          <div class="panel-b">
+            <div class="mini-matrix" id="mMatrix"></div>
+            <div class="dots" id="mDots"></div>
+            <div style="margin-top:10px">
+              <div class="dev-line"><div class="ico"><svg width="26" height="16" viewBox="0 0 26 16"><path d="M2 15a11 11 0 0 1 22 0" fill="none" stroke="#2a3240" stroke-width="3"/><line id="mVane" x1="13" y1="15" x2="13" y2="5" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/></svg></div><div><b id="mAngle"></b><span class="k" id="mAngleNote"></span></div></div>
+              <div class="dev-line"><div class="ico"><div class="led" id="mLed"></div></div><div><b id="mLedText"></b><span class="k" id="mLedNote"></span></div></div>
+              <div class="dev-line"><div class="ico"><span class="buzz" id="mBuzz">♪♪♪</span></div><div><b id="mBuzzText"></b><span class="k" id="mBuzzNote"></span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel overview">
+      <div class="panel-h">Обзор рынка <span class="k" id="ovDate"></span></div>
+      <div class="scroll">
+        <table class="tbl" id="ovTable">
+          <thead><tr>
+            <th data-s="code">Валюта</th>
+            <th data-s="rate">Курс, ₽</th>
+            <th data-s="abs">Изм.</th>
+            <th data-s="change">Изм. за день</th>
+            <th data-s="week">Изм. 1Н</th>
+            <th data-s="month">Изм. 1М</th>
+            <th data-s="min">Мин 1М</th>
+            <th data-s="max">Макс 1М</th>
+            <th>График 1М</th>
+            <th>Устройство</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
     </div>
   </section>
 
   <section id="tab-device" class="hidden">
-    <h2>Устройство</h2>
-    <p class="lead">Так выглядит флюгер для выбранной валюты. Выберите валюту, чтобы посмотреть, что покажет каждый элемент.</p>
-    <div class="pills" id="devPills"></div>
-    <div class="card device">
-      <div class="k">Большая матрица · 8 модулей</div>
-      <div class="big-matrix" id="devMatrix"></div>
+    <div class="page-h">
+      <div><h1>Устройство</h1><p>Что покажет флюгер для выбранной валюты и как это читать.</p></div>
+      <div class="pills" id="devPills"></div>
+    </div>
+    <div class="panel device-hero panel-b">
+      <div class="k" style="margin-bottom:8px">Большая матрица · 8 модулей</div>
+      <div class="big-matrix" id="dMatrix"></div>
       <div class="k" style="margin-top:14px">Маленькая матрица · 4 модуля · 8 последних курсов</div>
-      <div class="small-matrix" id="devBars"></div>
-      <div class="row3">
-        <div class="tile"><div class="k">Флюгер</div><div class="gauge" id="devGauge"></div><b id="devAngle" style="text-align:center"></b></div>
-        <div class="tile"><div class="k">Светодиод роста</div><div class="led" id="devLed"></div><b id="devLedText"></b><small id="devLedNote"></small></div>
-        <div class="tile buzz" id="devBuzz"><div class="k">Пищалка</div><div class="notes">♪ ♪ ♪</div><b id="devBuzzText"></b><small id="devBuzzNote"></small></div>
+      <div class="dots" id="dDots" style="--d:6px"></div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Флюгер</div><div class="gauge" id="dGauge"></div><b id="dAngle" style="text-align:center"></b></div>
+        <div class="tile"><div class="k">Светодиод роста</div><div class="led" id="dLed" style="margin-top:10px;width:22px;height:22px"></div><b id="dLedText"></b><span class="k" id="dLedNote"></span></div>
+        <div class="tile" id="dBuzzTile"><div class="k">Пищалка</div><div class="buzz" id="dBuzz" style="font-size:22px;margin-top:6px">♪ ♪ ♪</div><b id="dBuzzText"></b><span class="k" id="dBuzzNote"></span></div>
       </div>
     </div>
-    <div class="explain">
+    <div class="grid3 explain" style="margin-top:12px">
       <div class="tile"><b>Большая матрица</b><p>Код валюты, курс в рублях и изменение за день со стрелкой. Для KZT и MNT курс за 100 единиц, как у ЦБ.</p></div>
-      <div class="tile"><b>Маленькая матрица</b><p>8 столбиков — 8 последних курсов ЦБ, слева старый, справа новый. Самый низкий курс — 1 точка, самый высокий — 8. Цифры есть во вкладке «История».</p></div>
-      <div class="tile"><b>Флюгер</b><p>Где курс сейчас относительно среднего за 8 курсов. 90° — на уровне среднего, влево до 0° — ниже на 3% и больше, вправо до 180° — выше.</p></div>
-      <div class="tile"><b>Зелёный светодиод</b><p>Мигает, если за день курс вырос на порог или больше. Порог меняется в настройках.</p></div>
-      <div class="tile"><b>Пищалка</b><p>Пищит три раза, когда на экране появляется валюта, упавшая за день на порог или больше.</p></div>
-      <div class="tile"><b>Кнопка</b><p>Короткое нажатие — следующая валюта, долгое (0,8 с) — переключение AUTO и MANUAL. В AUTO валюты меняются сами.</p></div>
+      <div class="tile"><b>Маленькая матрица</b><p>8 столбиков — 8 последних курсов ЦБ, слева старый, справа новый. Самый низкий — 1 точка, самый высокий — 8.</p></div>
+      <div class="tile"><b>Флюгер</b><p>Курс относительно среднего за 8 курсов. 90° — на среднем, влево до 0° — ниже на 3% и больше, вправо до 180° — выше.</p></div>
+      <div class="tile"><b>Зелёный светодиод</b><p>Мигает, если за день курс вырос на порог или больше. Порог задаётся в настройках.</p></div>
+      <div class="tile"><b>Пищалка</b><p>Пищит три раза при показе валюты, которая за день упала на порог или больше.</p></div>
+      <div class="tile"><b>Кнопка</b><p>Короткое нажатие — следующая валюта, долгое (0,8 с) — переключение AUTO и MANUAL.</p></div>
     </div>
-    <div class="card" style="margin-top:16px">
-      <div class="k" style="margin-bottom:8px">Все валюты на устройстве</div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>Валюта</th><th>Матрица</th><th class="n">Флюгер</th><th>Светодиод</th><th>Пищалка</th><th>Показ</th></tr></thead>
+    <div class="panel" style="margin-top:12px">
+      <div class="panel-h">Все валюты на устройстве</div>
+      <div class="scroll">
+        <table class="tbl">
+          <thead><tr><th>Валюта</th><th style="text-align:left">Матрица</th><th>Флюгер</th><th>Светодиод</th><th>Пищалка</th><th>Показ</th></tr></thead>
           <tbody id="devTable"></tbody>
         </table>
       </div>
     </div>
   </section>
 
-  <section id="tab-history" class="hidden">
-    <h2>История курсов</h2>
-    <p class="lead">8 последних курсов ЦБ по каждой валюте. Наведите на точку, чтобы увидеть дату и курс.</p>
-    <div class="pills" id="histPills"></div>
-    <div class="card">
-      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px">
-        <div><div class="k" id="histName"></div><div class="bigrate" id="histRate"></div></div>
-        <div id="histChanges" style="text-align:right"></div>
-      </div>
-      <div class="chart-wrap"><svg class="chart" id="histChart" height="320"></svg><div class="tip hidden"></div></div>
+  <section id="tab-analytics" class="hidden">
+    <div class="page-h">
+      <div><h1>Аналитика</h1><p>Динамика курсов ЦБ, курсы по дням и сравнение валют.</p></div>
+      <div class="pills" id="anPills"></div>
     </div>
-    <div class="two">
-      <div class="card">
-        <div class="k" style="margin-bottom:8px">Курсы по дням</div>
-        <div style="overflow-x:auto">
-          <table>
-            <thead><tr><th>Дата</th><th class="n">Курс</th><th class="n">За день</th><th class="n">От среднего</th></tr></thead>
-            <tbody id="histTable"></tbody>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-h">Курсы по дням <span class="k" id="anTitle"></span></div>
+        <div class="scroll" style="max-height:520px;overflow-y:auto">
+          <table class="tbl">
+            <thead><tr><th>Дата</th><th>Курс, ₽</th><th>Изм.</th><th>Изм. %</th><th>От среднего</th></tr></thead>
+            <tbody id="anTable"></tbody>
           </table>
         </div>
       </div>
-      <div class="card">
-        <div class="k">Сравнение валют</div>
-        <p class="lead" style="margin:4px 0 0">Изменение в процентах от первого курса периода</p>
-        <div class="chart-wrap"><svg class="chart" id="compareChart" height="260"></svg><div class="tip hidden"></div></div>
-        <div class="legend" id="compareLegend"></div>
+      <div>
+        <div class="panel">
+          <div class="panel-h">Сравнение валют <span class="k">изменение от начала периода</span></div>
+          <div class="toolbar"><div class="seg" id="cmpSeg"><button data-p="5">1Н</button><button data-p="10">2Н</button><button data-p="22">1М</button><button data-p="0">Всё</button></div></div>
+          <div class="chart-box"><div class="legend-line" id="cmpLegend"></div><svg id="cmpChart" height="300"></svg></div>
+        </div>
+        <div class="panel" style="margin-top:12px">
+          <div class="panel-h">Статистика периода</div>
+          <div class="panel-b" id="anStats"></div>
+        </div>
       </div>
     </div>
   </section>
 
   <section id="tab-settings" class="hidden">
-    <h2>Настройки</h2>
-    <p class="lead">Устройство спрашивает сервер раз в минуту, поэтому сохранённые настройки появятся на нём в течение минуты.</p>
-    <div class="two">
-      <div class="card form">
-        <div class="field">
+    <div class="page-h"><div><h1>Настройки</h1><p>Устройство спрашивает сервер раз в минуту — сохранённые настройки появятся на нём в течение минуты.</p></div></div>
+    <div class="error hidden" id="showcaseNote" style="background:#2a2110;color:#f5c26b;border-color:#5a4416">Это публичная витрина проекта: здесь видны настройки по умолчанию, а менять их можно только на домашнем сервере, к которому подключено устройство.</div>
+    <div class="grid2">
+      <div class="panel panel-b form">
+        <div class="row">
           <label for="carousel">Время показа одной валюты <output id="carouselOut"></output></label>
           <p>Через сколько секунд устройство переключается на следующую валюту в режиме AUTO.</p>
           <input type="range" id="carousel" min="3" max="60" step="1">
         </div>
-        <div class="field">
+        <div class="row">
           <label for="alert">Сильное изменение курса <output id="alertOut"></output></label>
-          <p>Если за день курс вырос на это значение или больше — мигает зелёный светодиод. Если упал — пищит пищалка.</p>
+          <p>Рост на это значение или больше — мигает зелёный светодиод. Падение — пищит пищалка.</p>
           <input type="range" id="alert" min="0.1" max="5" step="0.1">
           <div class="preview" id="alertPreview"></div>
         </div>
-        <div class="field">
+        <div class="row">
           <label>Валюты на устройстве</label>
           <p>Какие валюты показывать на матрице. Нужна хотя бы одна. На сайте видны все.</p>
-          <div class="chips" id="chips"></div>
+          <div class="checks" id="checks"></div>
           <div class="preview" id="cyclePreview"></div>
-        </div>
-        <div class="actions">
-          <button class="btn main" id="save">Сохранить</button>
-          <button class="btn ghost" id="cancel">Отменить изменения</button>
-          <button class="btn ghost" id="reset">По умолчанию</button>
+          <div class="actions">
+            <button class="btn main" id="save">Сохранить</button>
+            <button class="btn" id="cancel">Отменить изменения</button>
+            <button class="btn" id="reset">По умолчанию</button>
+          </div>
         </div>
       </div>
       <div>
-        <div class="card">
-          <div class="k" style="margin-bottom:6px">Состояние системы</div>
-          <div class="kv"><span>Источник курсов</span><b id="sysSource"></b></div>
-          <div class="kv"><span>Курсы ЦБ загружены</span><b id="sysLoaded"></b></div>
-          <div class="kv"><span>Устройство</span><b id="sysDevice"></b></div>
-          <div class="kv"><span>Сервер обновляет курсы</span><b>раз в час</b></div>
-          <div class="kv"><span>Устройство спрашивает сервер</span><b>раз в минуту</b></div>
+        <div class="panel">
+          <div class="panel-h">Состояние системы</div>
+          <div class="panel-b">
+            <div class="kv"><span>Источник курсов</span><b id="sysSource"></b></div>
+            <div class="kv"><span>Курсы ЦБ загружены</span><b id="sysLoaded"></b></div>
+            <div class="kv"><span>Устройство</span><b id="sysDevice"></b></div>
+            <div class="kv"><span>Сервер обновляет курсы</span><b>раз в час</b></div>
+            <div class="kv"><span>Устройство спрашивает сервер</span><b>раз в минуту</b></div>
+          </div>
         </div>
-        <div class="card" style="margin-top:16px">
-          <div class="k" style="margin-bottom:6px">Сохранено сейчас</div>
-          <div class="kv"><span>Показ валюты</span><b id="curCarousel"></b></div>
-          <div class="kv"><span>Порог</span><b id="curAlert"></b></div>
-          <div class="kv"><span>Валюты</span><b id="curCurrencies"></b></div>
+        <div class="panel" style="margin-top:12px">
+          <div class="panel-h">Сохранено сейчас</div>
+          <div class="panel-b">
+            <div class="kv"><span>Показ валюты</span><b id="curCarousel"></b></div>
+            <div class="kv"><span>Порог</span><b id="curAlert"></b></div>
+            <div class="kv"><span>Валюты</span><b id="curCurrencies"></b></div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <footer>Данные: Банк России · страница обновляется раз в минуту</footer>
+  <footer id="footer">Данные: Банк России. Курсы обновляются сервером раз в час, страница — раз в минуту.</footer>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
-const NAMES = {
-  CNY: "Китайский юань",
-  USD: "Доллар США",
-  EUR: "Евро",
-  KZT: "Казахстанский тенге",
-  MNT: "Монгольский тугрик"
-};
-const COLORS = { CNY: "#f59e0b", USD: "#60a5fa", EUR: "#a78bfa", KZT: "#34d399", MNT: "#f472b6" };
+const NAMES = { CNY: "Китайский юань", USD: "Доллар США", EUR: "Евро", KZT: "Казахстанский тенге", MNT: "Монгольский тугрик" };
+const COLORS = { CNY: "#f59e0b", USD: "#60a5fa", EUR: "#a78bfa", KZT: "#16c784", MNT: "#f472b6" };
 const DEFAULTS = { carousel_s: 10, alert_pct: 1.0, currencies: ["CNY", "USD", "EUR", "KZT", "MNT"] };
 const SCALE_PERCENT = 3;
+const SHOWCASE = window.SHOWCASE === true;
 
 let rates = [];
+let previous = {};
 let settings = { ...DEFAULTS };
 let selected = null;
-let tab = "overview";
+let tab = "market";
+let period = 22;
+let chartType = "area";
+let cmpPeriod = 22;
+let sortKey = "code";
+let sortAsc = true;
 
 const $ = id => document.getElementById(id);
+const round2 = v => Math.round(v * 100) / 100;
 const money = (v, d = 2) => v.toLocaleString("ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d });
-const percent = v => { v = Math.round(v * 100) / 100; return (v > 0 ? "+" : v < 0 ? "−" : "") + money(Math.abs(v)) + "%"; };
-const kind = v => { v = Math.round(v * 100) / 100; return v > 0 ? "up" : v < 0 ? "down" : "flat"; };
+const percent = v => { v = round2(v); return (v > 0 ? "+" : v < 0 ? "−" : "") + money(Math.abs(v)) + "%"; };
+const signed = (v, d = 4) => (v > 0 ? "+" : v < 0 ? "−" : "") + money(Math.abs(v), d);
+const kind = v => { v = round2(v); return v > 0 ? "up" : v < 0 ? "down" : "flat"; };
 const average = list => list.reduce((a, b) => a + b, 0) / list.length;
-const periodChange = r => (r.history[r.history.length - 1] - r.history[0]) / r.history[0] * 100;
 const shortDate = s => s ? s.slice(8, 10) + "." + s.slice(5, 7) : "";
 const longDate = s => s ? s.slice(8, 10) + "." + s.slice(5, 7) + "." + s.slice(0, 4) : "";
 const per = r => r.nominal > 1 ? ` за ${r.nominal}` : "";
 const current = () => rates.find(r => r.code === selected);
+const longOf = r => r.history_long || r.history;
+const datesOf = r => r.dates_long || r.dates || [];
+const slicePeriod = (list, p) => p ? list.slice(-Math.min(p + 1, list.length)) : list;
+const changeOver = (r, p) => { const h = slicePeriod(longOf(r), p); return (h[h.length - 1] - h[0]) / h[0] * 100; };
 
-function toast(text) {
+function toast(text, ok = true) {
   $("toast").textContent = text;
+  $("toast").style.borderLeftColor = ok ? "var(--up)" : "var(--down)";
   $("toast").classList.add("show");
-  setTimeout(() => $("toast").classList.remove("show"), 2500);
+  setTimeout(() => $("toast").classList.remove("show"), 2600);
 }
 
 function deviceState(r, alertPct = settings.alert_pct) {
@@ -335,147 +472,332 @@ function deviceState(r, alertPct = settings.alert_pct) {
   const angle = 90 + Math.round(clamped / SCALE_PERCENT * 90);
   const arrow = r.change > 0 ? "▲" : r.change < 0 ? "▼" : "";
   const rateText = r.nominal > 1 ? `${r.code} ${r.rate.toFixed(2)}/${r.nominal}` : `${r.code} ${r.rate.toFixed(2)}`;
-  return {
-    matrix: `${rateText} ${arrow}${Math.abs(r.change).toFixed(2)}`,
-    angle,
-    diff,
-    rising: r.change >= alertPct,
-    falling: r.change <= -alertPct
-  };
+  return { matrix: `${rateText} ${arrow}${Math.abs(r.change).toFixed(2)}`, angle, diff, rising: r.change >= alertPct, falling: r.change <= -alertPct };
 }
 
-function gauge(angle) {
-  let s = `<svg viewBox="0 0 220 130" width="100%"><path d="M20 115a90 90 0 0 1 180 0" fill="none" stroke="#1f2632" stroke-width="14" stroke-linecap="round"/>`;
-  s += `<path d="M20 115a90 90 0 0 1 90 -90" fill="none" stroke="#f87171" stroke-width="14" stroke-linecap="round" opacity=".18"/>`;
-  s += `<path d="M110 25a90 90 0 0 1 90 90" fill="none" stroke="#34d399" stroke-width="14" stroke-linecap="round" opacity=".18"/>`;
-  for (let k = 0; k <= 12; k++) {
-    const a = Math.PI - k * Math.PI / 12, r1 = k % 6 === 0 ? 66 : 72;
-    s += `<line x1="${110 + r1 * Math.cos(a)}" y1="${115 - r1 * Math.sin(a)}" x2="${110 + 80 * Math.cos(a)}" y2="${115 - 80 * Math.sin(a)}" stroke="#7c8598" stroke-width="${k % 6 === 0 ? 2 : 1}"/>`;
-  }
-  const a = (180 - angle) * Math.PI / 180;
-  s += `<line x1="110" y1="115" x2="${110 + 70 * Math.cos(a)}" y2="${115 - 70 * Math.sin(a)}" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/><circle cx="110" cy="115" r="8" fill="#f59e0b"/>`;
-  s += `<text x="16" y="128" font-size="10" fill="#7c8598">−3%</text><text x="110" y="14" font-size="10" fill="#7c8598" text-anchor="middle">среднее</text><text x="204" y="128" font-size="10" fill="#7c8598" text-anchor="end">+3%</text></svg>`;
-  return s;
+function angleText(st) {
+  if (Math.abs(st.diff) < 0.1) return "на уровне среднего";
+  return st.diff > 0 ? `выше среднего на ${money(st.diff, 1)}%` : `ниже среднего на ${money(-st.diff, 1)}%`;
 }
 
-function bars(history) {
+function dots(history) {
   const min = Math.min(...history), max = Math.max(...history);
   let s = "";
   history.forEach((v, i) => {
     const level = max > min ? 1 + Math.round((v - min) / (max - min) * 7) : 4;
-    for (let k = 0; k < 3; k++) {
-      for (let row = 0; row < 8; row++) s += `<i class="${8 - row <= level ? "on" : ""}"></i>`;
-    }
+    for (let k = 0; k < 3; k++) for (let row = 0; row < 8; row++) s += `<i class="${8 - row <= level ? "on" : ""}"></i>`;
     if (i < history.length - 1) s += "<i></i>".repeat(8);
   });
   return s;
 }
 
-function sparkline(history, color) {
-  const w = 160, h = 22, min = Math.min(...history), max = Math.max(...history);
-  const pts = history.map((v, i) => `${(i / (history.length - 1) * w).toFixed(1)},${(max === min ? h / 2 : 2 + (max - v) / (max - min) * (h - 4)).toFixed(1)}`).join(" ");
-  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`;
+function gauge(angle) {
+  let s = `<svg viewBox="0 0 220 130" width="100%"><path d="M20 115a90 90 0 0 1 180 0" fill="none" stroke="#1f2632" stroke-width="14" stroke-linecap="round"/>`;
+  s += `<path d="M20 115a90 90 0 0 1 90 -90" fill="none" stroke="#ea3943" stroke-width="14" stroke-linecap="round" opacity=".2"/><path d="M110 25a90 90 0 0 1 90 90" fill="none" stroke="#16c784" stroke-width="14" stroke-linecap="round" opacity=".2"/>`;
+  for (let k = 0; k <= 12; k++) {
+    const a = Math.PI - k * Math.PI / 12, r1 = k % 6 === 0 ? 66 : 72;
+    s += `<line x1="${110 + r1 * Math.cos(a)}" y1="${115 - r1 * Math.sin(a)}" x2="${110 + 80 * Math.cos(a)}" y2="${115 - 80 * Math.sin(a)}" stroke="#7d8696" stroke-width="${k % 6 === 0 ? 2 : 1}"/>`;
+  }
+  const a = (180 - angle) * Math.PI / 180;
+  s += `<line x1="110" y1="115" x2="${110 + 70 * Math.cos(a)}" y2="${115 - 70 * Math.sin(a)}" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/><circle cx="110" cy="115" r="8" fill="#f59e0b"/>`;
+  s += `<text x="16" y="128" font-size="10" fill="#7d8696">−3%</text><text x="110" y="14" font-size="10" fill="#7d8696" text-anchor="middle">среднее</text><text x="204" y="128" font-size="10" fill="#7d8696" text-anchor="end">+3%</text></svg>`;
+  return s;
 }
 
-function attachTips(svg, points, text) {
-  const tip = svg.parentElement.querySelector(".tip");
-  const w = svg.viewBox.baseVal.width;
-  svg.querySelectorAll("rect[data-i]").forEach(rect => {
-    rect.onmouseenter = () => {
-      const i = +rect.dataset.i;
-      tip.innerHTML = text(i);
-      tip.classList.remove("hidden");
-      const width = svg.clientWidth, half = tip.offsetWidth / 2;
-      tip.style.left = Math.min(Math.max(points[i][0] / w * width, half), width - half) + "px";
-      tip.style.top = points[i][1] + "px";
-    };
-    rect.onmouseleave = () => tip.classList.add("hidden");
+function spark(list, color, w = 120, h = 28) {
+  const min = Math.min(...list), max = Math.max(...list);
+  const pts = list.map((v, i) => `${(i / (list.length - 1) * w).toFixed(1)},${(max === min ? h / 2 : 2 + (max - v) / (max - min) * (h - 4)).toFixed(1)}`).join(" ");
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
+}
+
+function niceTicks(min, max, count) {
+  const step0 = (max - min) / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= step0) || step0;
+  const ticks = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) ticks.push(v);
+  return { ticks, step };
+}
+
+function dateLabels(dates, x, h, width) {
+  const n = dates.length;
+  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(width / 70))));
+  let s = "";
+  dates.forEach((d, i) => {
+    const last = i === n - 1;
+    if (!last && (i % every !== 0 || x(n - 1) - x(i) < 50)) return;
+    const anchor = i === 0 ? "start" : last ? "end" : "middle";
+    s += `<text x="${x(i)}" y="${h - 8}" font-size="11" fill="#7d8696" text-anchor="${anchor}">${shortDate(d)}</text>`;
   });
+  return s;
 }
 
-function lineChart(svg, r) {
-  const w = svg.clientWidth || 480, h = +svg.getAttribute("height");
-  const left = 56, right = 24, top = 16, bottom = 26;
-  const values = r.history, dates = r.dates || [];
+function priceChart(svg, r) {
+  const w = svg.clientWidth || 700, h = +svg.getAttribute("height");
+  const left = 10, right = 74, top = 34, bottom = 26;
+  const values = slicePeriod(longOf(r), period), dates = slicePeriod(datesOf(r), period);
   let min = Math.min(...values), max = Math.max(...values);
-  const pad = (max - min) * 0.15 || max * 0.01;
+  const pad = (max - min) * 0.12 || max * 0.01;
   min -= pad;
   max += pad;
-  const x = i => left + i / (values.length - 1) * (w - left - right);
+  const n = values.length;
+  const x = i => left + (n === 1 ? 0.5 : i / (n - 1)) * (w - left - right);
   const y = v => top + (max - v) / (max - min) * (h - top - bottom);
-  const color = periodChange(r) >= 0 ? "#34d399" : "#f87171";
-  const avg = average(values);
-  let s = `<defs><linearGradient id="fill-${svg.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".22"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>`;
-  for (let k = 0; k <= 4; k++) {
-    const v = min + (max - min) * k / 4;
-    s += `<line x1="${left}" x2="${w - right}" y1="${y(v)}" y2="${y(v)}" stroke="#1c222d"/><text x="${left - 8}" y="${y(v) + 4}" font-size="11" fill="#6b7385" text-anchor="end">${money(v)}</text>`;
-  }
-  s += `<line x1="${left}" x2="${w - right}" y1="${y(avg)}" y2="${y(avg)}" stroke="#f59e0b" stroke-dasharray="5 4"/><text x="${w - right}" y="${y(avg) - 6}" font-size="11" fill="#f59e0b" text-anchor="end">среднее ${money(avg)}</text>`;
-  const pts = values.map((v, i) => [x(i), y(v)]);
-  const line = pts.map(p => p.join(",")).join(" ");
-  s += `<polygon points="${x(0)},${h - bottom} ${line} ${x(values.length - 1)},${h - bottom}" fill="url(#fill-${svg.id})"/><polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;
-  const step = (w - left - right) / (values.length - 1);
-  pts.forEach(([px, py], i) => {
-    s += `<circle cx="${px}" cy="${py}" r="${i === values.length - 1 ? 5 : 3.5}" fill="#131820" stroke="${color}" stroke-width="2"/>`;
-    s += `<text x="${px}" y="${h - 8}" font-size="11" fill="#6b7385" text-anchor="middle">${shortDate(dates[i])}</text>`;
-    s += `<rect x="${px - step / 2}" y="${top}" width="${step}" height="${h - top - bottom}" fill="transparent" data-i="${i}"/>`;
+  const color = values[n - 1] >= values[0] ? "#16c784" : "#ea3943";
+  const { ticks, step } = niceTicks(min, max, 6);
+  const digits = step < 0.01 ? 4 : step < 0.1 ? 3 : 2;
+  let s = `<defs><linearGradient id="g-main" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".28"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>`;
+  ticks.forEach(v => {
+    s += `<line x1="${left}" x2="${w - right}" y1="${y(v)}" y2="${y(v)}" stroke="#1a2029"/>`;
+    s += `<text x="${w - right + 8}" y="${y(v) + 4}" font-size="11" fill="#7d8696" font-family="Consolas, monospace">${money(v, digits)}</text>`;
   });
+  s += dateLabels(dates, x, h, w - left - right);
+  const avg = average(values);
+  s += `<line x1="${left}" x2="${w - right}" y1="${y(avg)}" y2="${y(avg)}" stroke="#f59e0b" stroke-dasharray="4 4" opacity=".55"/>`;
+  const pts = values.map((v, i) => [x(i), y(v)]);
+  if (chartType === "bars") {
+    const bw = Math.max(2, (w - left - right) / n * 0.6);
+    values.forEach((v, i) => {
+      const up = i === 0 || v >= values[i - 1];
+      s += `<rect x="${x(i) - bw / 2}" y="${y(v)}" width="${bw}" height="${h - bottom - y(v)}" fill="${up ? "#16c784" : "#ea3943"}" opacity=".75" rx="1"/>`;
+    });
+  } else {
+    const line = pts.map(p => p.join(",")).join(" ");
+    if (chartType === "area") s += `<polygon points="${x(0)},${h - bottom} ${line} ${x(n - 1)},${h - bottom}" fill="url(#g-main)"/>`;
+    s += `<polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  const lastY = y(values[n - 1]);
+  s += `<line x1="${left}" x2="${w - right}" y1="${lastY}" y2="${lastY}" stroke="${color}" stroke-dasharray="2 3" opacity=".8"/>`;
+  s += `<rect x="${w - right + 2}" y="${lastY - 10}" width="${right - 4}" height="20" rx="3" fill="${color}"/><text x="${w - right + 8}" y="${lastY + 4}" font-size="11" fill="#fff" font-weight="700" font-family="Consolas, monospace">${money(values[n - 1], digits)}</text>`;
+  s += `<circle cx="${x(n - 1)}" cy="${lastY}" r="4" fill="${color}"/>`;
+  s += `<g id="cross" visibility="hidden"><line id="cx" y1="${top}" y2="${h - bottom}" stroke="#7d8696" stroke-dasharray="3 3"/><line id="cy" x1="${left}" x2="${w - right}" stroke="#7d8696" stroke-dasharray="3 3"/>`;
+  s += `<circle id="cdot" r="5" fill="${color}" stroke="#0b0e13" stroke-width="2"/>`;
+  s += `<rect id="cyTag" x="${w - right + 2}" width="${right - 4}" height="20" rx="3" fill="#2a3240"/><text id="cyText" x="${w - right + 8}" font-size="11" fill="#fff" font-family="Consolas, monospace"></text>`;
+  s += `<rect id="cxTag" y="${h - bottom + 4}" width="76" height="18" rx="3" fill="#2a3240"/><text id="cxText" y="${h - bottom + 17}" font-size="11" fill="#fff" text-anchor="middle"></text></g>`;
+  s += `<rect id="hit" x="${left}" y="${top}" width="${w - left - right}" height="${h - top - bottom}" fill="transparent"/>`;
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
   svg.innerHTML = s;
-  attachTips(svg, pts, i => {
-    const prev = i > 0 ? (values[i] - values[i - 1]) / values[i - 1] * 100 : null;
-    return `<b>${longDate(dates[i])}</b> · ${money(values[i], 4)} ₽${prev === null ? "" : " · " + percent(prev)}`;
-  });
+
+  const legend = i => {
+    const prev = i > 0 ? (values[i] - values[i - 1]) / values[i - 1] * 100 : 0;
+    $("chartLegend").innerHTML = `${longDate(dates[i])} &nbsp; Курс <b class="num">${money(values[i], 4)}</b> &nbsp; Изм. <b class="num ${kind(prev)}">${percent(prev)}</b> &nbsp; Среднее <b class="num">${money(avg, 4)}</b>`;
+  };
+  legend(n - 1);
+  const hit = svg.querySelector("#hit");
+  hit.onmousemove = e => {
+    const box = svg.getBoundingClientRect();
+    const mx = (e.clientX - box.left) / box.width * w;
+    const i = Math.max(0, Math.min(n - 1, Math.round((mx - left) / (w - left - right) * (n - 1))));
+    const [px, py] = pts[i];
+    svg.querySelector("#cross").setAttribute("visibility", "visible");
+    ["x1", "x2"].forEach(a => svg.querySelector("#cx").setAttribute(a, px));
+    ["y1", "y2"].forEach(a => svg.querySelector("#cy").setAttribute(a, py));
+    svg.querySelector("#cdot").setAttribute("cx", px);
+    svg.querySelector("#cdot").setAttribute("cy", py);
+    svg.querySelector("#cyTag").setAttribute("y", py - 10);
+    svg.querySelector("#cyText").setAttribute("y", py + 4);
+    svg.querySelector("#cyText").textContent = money(values[i], digits);
+    const tx = Math.max(left + 38, Math.min(w - right - 38, px));
+    svg.querySelector("#cxTag").setAttribute("x", tx - 38);
+    svg.querySelector("#cxText").setAttribute("x", tx);
+    svg.querySelector("#cxText").textContent = longDate(dates[i]);
+    legend(i);
+  };
+  hit.onmouseleave = () => {
+    svg.querySelector("#cross").setAttribute("visibility", "hidden");
+    legend(n - 1);
+  };
 }
 
 function compareChart(svg) {
-  const w = svg.clientWidth || 480, h = +svg.getAttribute("height");
-  const left = 44, right = 24, top = 12, bottom = 26;
-  const series = rates.map(r => ({ code: r.code, values: r.history.map(v => (v - r.history[0]) / r.history[0] * 100), dates: r.dates || [] }));
+  const w = svg.clientWidth || 500, h = +svg.getAttribute("height");
+  const left = 10, right = 56, top = 34, bottom = 26;
+  const series = rates.map(r => {
+    const vals = slicePeriod(longOf(r), cmpPeriod);
+    return { code: r.code, values: vals.map(v => (v - vals[0]) / vals[0] * 100), dates: slicePeriod(datesOf(r), cmpPeriod) };
+  });
   const all = series.flatMap(s => s.values);
   let min = Math.min(...all, 0), max = Math.max(...all, 0);
   const pad = (max - min) * 0.1 || 1;
   min -= pad;
   max += pad;
-  const count = series[0].values.length;
-  const x = i => left + i / (count - 1) * (w - left - right);
+  const n = series[0].values.length;
+  const x = i => left + i / (n - 1) * (w - left - right);
   const y = v => top + (max - v) / (max - min) * (h - top - bottom);
+  const { ticks } = niceTicks(min, max, 5);
   let s = "";
-  for (let k = 0; k <= 4; k++) {
-    const v = min + (max - min) * k / 4;
-    s += `<line x1="${left}" x2="${w - right}" y1="${y(v)}" y2="${y(v)}" stroke="#1c222d"/><text x="${left - 6}" y="${y(v) + 4}" font-size="11" fill="#6b7385" text-anchor="end">${money(v, 1)}%</text>`;
-  }
-  s += `<line x1="${left}" x2="${w - right}" y1="${y(0)}" y2="${y(0)}" stroke="#3a4252"/>`;
-  series.forEach(se => {
-    const width = se.code === selected ? 3 : 1.6;
-    const opacity = se.code === selected ? 1 : 0.55;
-    s += `<polyline points="${se.values.map((v, i) => x(i) + "," + y(v)).join(" ")}" fill="none" stroke="${COLORS[se.code]}" stroke-width="${width}" opacity="${opacity}" stroke-linejoin="round"/>`;
+  ticks.forEach(v => {
+    s += `<line x1="${left}" x2="${w - right}" y1="${y(v)}" y2="${y(v)}" stroke="#1a2029"/><text x="${w - right + 8}" y="${y(v) + 4}" font-size="11" fill="#7d8696" font-family="Consolas, monospace">${money(v, 1)}%</text>`;
   });
-  const step = (w - left - right) / (count - 1);
-  const pts = [];
-  for (let i = 0; i < count; i++) {
-    s += `<text x="${x(i)}" y="${h - 8}" font-size="11" fill="#6b7385" text-anchor="middle">${shortDate(series[0].dates[i])}</text>`;
-    s += `<rect x="${x(i) - step / 2}" y="${top}" width="${step}" height="${h - top - bottom}" fill="transparent" data-i="${i}"/>`;
-    pts.push([x(i), top + 10]);
-  }
+  s += `<line x1="${left}" x2="${w - right}" y1="${y(0)}" y2="${y(0)}" stroke="#3a4252"/>`;
+  s += dateLabels(series[0].dates, x, h, w - left - right);
+  series.forEach(se => {
+    const sel = se.code === selected;
+    s += `<polyline points="${se.values.map((v, i) => x(i) + "," + y(v)).join(" ")}" fill="none" stroke="${COLORS[se.code]}" stroke-width="${sel ? 2.6 : 1.5}" opacity="${sel ? 1 : .6}" stroke-linejoin="round"/>`;
+  });
+  s += `<line id="ccx" y1="${top}" y2="${h - bottom}" stroke="#7d8696" stroke-dasharray="3 3" visibility="hidden"/>`;
+  s += `<rect id="chit" x="${left}" y="${top}" width="${w - left - right}" height="${h - top - bottom}" fill="transparent"/>`;
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
   svg.innerHTML = s;
-  attachTips(svg, pts, i => `<b>${shortDate(series[0].dates[i])}</b> · ` + series.map(se => `${se.code} ${percent(se.values[i])}`).join(" · "));
-  $("compareLegend").innerHTML = series.map(se => `<span style="--c:${COLORS[se.code]}">${se.code} ${percent(se.values[se.values.length - 1])}</span>`).join("");
+  const legend = i => {
+    $("cmpLegend").innerHTML = `${shortDate(series[0].dates[i])} &nbsp; ` + series.map(se => `<span style="color:${COLORS[se.code]}">${se.code}</span> <b class="num ${kind(se.values[i])}">${percent(se.values[i])}</b>`).join(" &nbsp; ");
+  };
+  legend(n - 1);
+  const hit = svg.querySelector("#chit"), line = svg.querySelector("#ccx");
+  hit.onmousemove = e => {
+    const box = svg.getBoundingClientRect();
+    const mx = (e.clientX - box.left) / box.width * w;
+    const i = Math.max(0, Math.min(n - 1, Math.round((mx - left) / (w - left - right) * (n - 1))));
+    line.setAttribute("x1", x(i));
+    line.setAttribute("x2", x(i));
+    line.setAttribute("visibility", "visible");
+    legend(i);
+  };
+  hit.onmouseleave = () => { line.setAttribute("visibility", "hidden"); legend(n - 1); };
 }
 
-function fillDevice(prefix, r) {
+function flashClass(code) {
+  const old = previous[code], r = rates.find(x => x.code === code);
+  if (old === undefined || !r || old === r.rate) return "";
+  return r.rate > old ? "flash-up" : "flash-down";
+}
+
+function renderTape() {
+  const items = rates.map(r => `<div class="tape-item" data-code="${r.code}"><b>${r.code}/RUB</b><span class="num">${money(r.rate, 4)}</span><span class="num ${kind(r.change)}">${percent(r.change)}</span></div>`).join("");
+  $("tape").innerHTML = items.repeat(4);
+  $("tape").querySelectorAll(".tape-item").forEach(el => el.onclick = () => { select(el.dataset.code); if (tab !== "market") location.hash = "market"; });
+}
+
+function renderWatch() {
+  $("watch").innerHTML = rates.map(r => `<div class="watch-row ${r.code === selected ? "active" : ""} ${flashClass(r.code)}" data-code="${r.code}">
+      <div class="code">${r.code}<span>/RUB</span></div><div class="price num">${money(r.rate, 4)}</div>
+      <div class="name">${NAMES[r.code] || ""}${per(r)}</div><div class="pct num ${kind(r.change)}">${percent(r.change)}</div>
+    </div>`).join("");
+  $("watch").querySelectorAll(".watch-row").forEach(el => el.onclick = () => select(el.dataset.code));
+}
+
+function renderQuote(r) {
+  const values = slicePeriod(longOf(r), period);
+  const abs = r.history.length > 1 ? r.rate - r.history[r.history.length - 2] : 0;
+  $("qPair").innerHTML = `${r.code}/RUB<small>${NAMES[r.code] || ""}${per(r)}</small>`;
+  $("qLast").textContent = money(r.rate, 4);
+  $("qLast").className = `last num ${kind(r.change)} ${flashClass(r.code)}`;
+  $("qDelta").innerHTML = `<span class="${kind(r.change)}">${signed(abs)} (${percent(r.change)})</span> <span class="k">за день</span>`;
+  const label = { 5: "1Н", 10: "2Н", 22: "1М", 0: "период" }[period];
+  $("qStats").innerHTML = [
+    ["Начало периода", money(values[0], 4)],
+    ["Макс", money(Math.max(...values), 4)],
+    ["Мин", money(Math.min(...values), 4)],
+    ["Среднее", money(average(values), 4)],
+    [`Изм. за ${label}`, `<span class="${kind(changeOver(r, period))}">${percent(changeOver(r, period))}</span>`]
+  ].map(([k, v]) => `<div><span class="k">${k}</span><b class="num">${v}</b></div>`).join("");
+  document.querySelectorAll("#periodSeg button").forEach(b => b.classList.toggle("active", +b.dataset.p === period));
+  document.querySelectorAll("#typeSeg button").forEach(b => b.classList.toggle("active", b.dataset.t === chartType));
+  priceChart($("mainChart"), r);
+}
+
+function convOptions() {
+  const codes = ["RUB", ...rates.map(r => r.code)];
+  ["convFrom", "convTo"].forEach(id => {
+    const sel = $(id), value = sel.value;
+    sel.innerHTML = codes.map(c => `<option value="${c}">${c}</option>`).join("");
+    if (codes.includes(value)) sel.value = value;
+  });
+  if (!$("convFrom").value || $("convFrom").value === $("convTo").value) $("convFrom").value = selected;
+  if (!$("convTo").value || $("convFrom").value === $("convTo").value) $("convTo").value = $("convFrom").value === "RUB" ? selected : "RUB";
+}
+
+function rubPerUnit(code) {
+  if (code === "RUB") return 1;
+  const r = rates.find(x => x.code === code);
+  return r.rate / r.nominal;
+}
+
+function convert() {
+  const amount = parseFloat(($("convAmount").value || "0").replace(",", ".").replace(/\s/g, ""));
+  const from = $("convFrom").value, to = $("convTo").value;
+  if (!rates.length || !from || !to) return;
+  if (isNaN(amount)) {
+    $("convResult").value = "";
+    $("convNote").textContent = "Введите число";
+    return;
+  }
+  const result = amount * rubPerUnit(from) / rubPerUnit(to);
+  $("convResult").value = money(result, result < 1 ? 4 : 2);
+  const one = rubPerUnit(from) / rubPerUnit(to);
+  $("convNote").textContent = `1 ${from} = ${money(one, one < 1 ? 6 : 4)} ${to} · по курсу ЦБ`;
+}
+
+function renderMiniDevice(r) {
   const st = deviceState(r);
-  $(prefix + "Matrix").textContent = st.matrix;
-  $(prefix + "Bars").innerHTML = bars(r.history);
-  $(prefix + "Gauge").innerHTML = gauge(st.angle);
-  $(prefix + "Angle").textContent = `${st.angle}° · ` + (Math.abs(st.diff) < 0.1 ? "на уровне среднего" : st.diff > 0 ? `выше среднего на ${money(st.diff, 1)}%` : `ниже среднего на ${money(-st.diff, 1)}%`);
-  $(prefix + "Led").classList.toggle("on", st.rising);
-  $(prefix + "LedText").textContent = st.rising ? "Мигает" : "Выключен";
-  $(prefix + "LedNote").textContent = st.rising ? `рост ${percent(r.change)} ≥ ${money(settings.alert_pct, 1)}%` : `рост меньше ${money(settings.alert_pct, 1)}%`;
-  $(prefix + "Buzz").classList.toggle("on", st.falling);
-  $(prefix + "BuzzText").textContent = st.falling ? "3 сигнала" : "Тихо";
-  $(prefix + "BuzzNote").textContent = st.falling ? `падение ${percent(r.change)}` : `падение меньше ${money(settings.alert_pct, 1)}%`;
+  $("mMatrix").textContent = st.matrix;
+  $("mDots").innerHTML = dots(r.history);
+  const a = (180 - st.angle) * Math.PI / 180;
+  $("mVane").setAttribute("x2", 13 + 10 * Math.cos(a));
+  $("mVane").setAttribute("y2", 15 - 10 * Math.sin(a));
+  $("mAngle").textContent = `Флюгер ${st.angle}°`;
+  $("mAngleNote").textContent = angleText(st);
+  $("mLed").classList.toggle("on", st.rising);
+  $("mLedText").textContent = st.rising ? "Светодиод мигает" : "Светодиод выключен";
+  $("mLedNote").textContent = st.rising ? `рост ${percent(r.change)}` : `рост меньше ${money(settings.alert_pct, 1)}%`;
+  $("mBuzz").classList.toggle("on", st.falling);
+  $("mBuzzText").textContent = st.falling ? "Пищалка: 3 сигнала" : "Пищалка молчит";
+  $("mBuzzNote").textContent = st.falling ? `падение ${percent(r.change)}` : `падение меньше ${money(settings.alert_pct, 1)}%`;
+}
+
+function overviewRows() {
+  return rates.map(r => {
+    const m = slicePeriod(longOf(r), 22);
+    return {
+      r,
+      code: r.code,
+      rate: r.rate,
+      abs: r.history.length > 1 ? r.rate - r.history[r.history.length - 2] : 0,
+      change: r.change,
+      week: changeOver(r, 5),
+      month: changeOver(r, 22),
+      min: Math.min(...m),
+      max: Math.max(...m),
+      spark: m
+    };
+  });
+}
+
+function renderOverview() {
+  const rows = overviewRows().sort((a, b) => {
+    const va = a[sortKey], vb = b[sortKey];
+    const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+    return sortAsc ? c : -c;
+  });
+  document.querySelectorAll("#ovTable th[data-s]").forEach(th => {
+    th.classList.toggle("sorted", th.dataset.s === sortKey);
+    th.classList.toggle("asc", th.dataset.s === sortKey && sortAsc);
+  });
+  $("ovTable").querySelector("tbody").innerHTML = rows.map(x => {
+    const on = settings.currencies.includes(x.code);
+    return `<tr class="${x.code === selected ? "active" : ""}" data-code="${x.code}">
+      <td><b>${x.code}</b> <span class="k">${NAMES[x.code] || ""}${per(x.r)}</span></td>
+      <td class="num">${money(x.rate, 4)}</td>
+      <td class="num ${kind(x.abs)}">${signed(x.abs)}</td>
+      <td><span class="pct-chip num ${kind(x.change)}">${percent(x.change)}</span></td>
+      <td class="num ${kind(x.week)}">${percent(x.week)}</td>
+      <td class="num ${kind(x.month)}">${percent(x.month)}</td>
+      <td class="num">${money(x.min, 4)}</td>
+      <td class="num">${money(x.max, 4)}</td>
+      <td>${spark(x.spark, x.month >= 0 ? "#16c784" : "#ea3943")}</td>
+      <td><span class="badge ${on ? "on" : ""}">${on ? "показывается" : "скрыта"}</span></td>
+    </tr>`;
+  }).join("");
+  $("ovTable").querySelectorAll("tbody tr").forEach(tr => tr.onclick = () => { select(tr.dataset.code); window.scrollTo({ top: 0, behavior: "smooth" }); });
+}
+
+function renderMarket() {
+  const r = current();
+  renderWatch();
+  renderQuote(r);
+  renderMiniDevice(r);
+  renderOverview();
+  convert();
 }
 
 function pills(id) {
@@ -483,63 +805,63 @@ function pills(id) {
   $(id).querySelectorAll(".pill").forEach(b => b.onclick = () => select(b.dataset.code));
 }
 
-function changesHtml(r) {
-  return `<span class="${kind(r.change)}" style="font-weight:600">${r.change < 0 ? "▼" : r.change > 0 ? "▲" : ""} ${percent(r.change)} за день</span> · <span class="${kind(periodChange(r))}">${percent(periodChange(r))} за ${r.history.length} курсов</span>`;
-}
-
-function renderOverview() {
-  const r = current();
-  $("list").innerHTML = rates.map(x => `<div class="item ${x.code === selected ? "active" : ""}" data-code="${x.code}">
-      <div class="top">${x.code}<span class="${kind(x.change)}">${percent(x.change)}</span></div>
-      <div class="val">${money(x.rate)} ₽ <span class="per">${per(x)}</span></div>
-      ${sparkline(x.history, periodChange(x) >= 0 ? "#34d399" : "#f87171")}
-    </div>`).join("");
-  $("list").querySelectorAll(".item").forEach(el => el.onclick = () => select(el.dataset.code));
-  $("ovCode").textContent = r.code;
-  fillDevice("ov", r);
-  $("ovName").textContent = `${NAMES[r.code] || r.code}${per(r)}`;
-  $("ovRate").textContent = money(r.rate, 4) + " ₽";
-  $("ovChanges").innerHTML = changesHtml(r);
-  lineChart($("ovChart"), r);
-}
-
-function renderDevicePage() {
-  const r = current();
+function renderDevice() {
+  const r = current(), st = deviceState(r);
   pills("devPills");
-  fillDevice("dev", r);
+  $("dMatrix").textContent = st.matrix;
+  $("dDots").innerHTML = dots(r.history);
+  $("dGauge").innerHTML = gauge(st.angle);
+  $("dAngle").textContent = `${st.angle}° · ${angleText(st)}`;
+  $("dLed").classList.toggle("on", st.rising);
+  $("dLedText").textContent = st.rising ? "Мигает" : "Выключен";
+  $("dLedNote").textContent = st.rising ? `рост ${percent(r.change)} ≥ ${money(settings.alert_pct, 1)}%` : `рост меньше ${money(settings.alert_pct, 1)}%`;
+  $("dBuzz").classList.toggle("on", st.falling);
+  $("dBuzzTile").classList.toggle("alarm", st.falling);
+  $("dBuzzText").textContent = st.falling ? "3 сигнала" : "Тихо";
+  $("dBuzzNote").textContent = st.falling ? `падение ${percent(r.change)}` : `падение меньше ${money(settings.alert_pct, 1)}%`;
   $("devTable").innerHTML = rates.map(x => {
-    const st = deviceState(x);
-    const shown = settings.currencies.includes(x.code);
-    return `<tr class="${x.code === selected ? "sel" : ""}">
+    const s = deviceState(x), on = settings.currencies.includes(x.code);
+    return `<tr class="${x.code === selected ? "active" : ""}" data-code="${x.code}">
       <td><b>${x.code}</b></td>
-      <td style="font-family:Consolas,monospace;color:#ff4d3d">${st.matrix}</td>
-      <td class="n">${st.angle}°</td>
-      <td class="${st.rising ? "up" : "flat"}">${st.rising ? "мигает" : "выкл"}</td>
-      <td class="${st.falling ? "down" : "flat"}">${st.falling ? "3 сигнала" : "тихо"}</td>
-      <td class="${shown ? "" : "flat"}">${shown ? "да" : "скрыта"}</td>
+      <td style="text-align:left;font-family:Consolas,monospace;color:var(--led)">${s.matrix}</td>
+      <td class="num">${s.angle}°</td>
+      <td class="${s.rising ? "up" : "flat"}">${s.rising ? "мигает" : "выкл"}</td>
+      <td class="${s.falling ? "down" : "flat"}">${s.falling ? "3 сигнала" : "тихо"}</td>
+      <td><span class="badge ${on ? "on" : ""}">${on ? "да" : "скрыта"}</span></td>
     </tr>`;
   }).join("");
+  $("devTable").querySelectorAll("tr").forEach(tr => tr.onclick = () => select(tr.dataset.code));
 }
 
-function renderHistory() {
+function renderAnalytics() {
   const r = current();
-  pills("histPills");
-  $("histName").textContent = `${NAMES[r.code] || r.code}${per(r)}`;
-  $("histRate").textContent = money(r.rate, 4) + " ₽";
-  $("histChanges").innerHTML = changesHtml(r) + `<div style="color:var(--muted);font-size:13px">мин ${money(Math.min(...r.history))} · макс ${money(Math.max(...r.history))} · среднее ${money(average(r.history))}</div>`;
-  lineChart($("histChart"), r);
-  const avg = average(r.history);
-  $("histTable").innerHTML = r.history.map((v, i) => {
-    const day = i > 0 ? (v - r.history[i - 1]) / r.history[i - 1] * 100 : null;
+  pills("anPills");
+  $("anTitle").textContent = `${r.code}/RUB${per(r)}`;
+  const values = longOf(r), dates = datesOf(r), avg = average(values);
+  $("anTable").innerHTML = values.map((v, i) => {
+    const abs = i > 0 ? v - values[i - 1] : null;
+    const pct = i > 0 ? abs / values[i - 1] * 100 : null;
     const fromAvg = (v - avg) / avg * 100;
-    return `<tr class="${i === r.history.length - 1 ? "sel" : ""}">
-      <td>${longDate((r.dates || [])[i])}</td>
-      <td class="n">${money(v, 4)} ₽</td>
-      <td class="n ${day === null ? "flat" : kind(day)}">${day === null ? "—" : percent(day)}</td>
-      <td class="n ${kind(fromAvg)}">${percent(fromAvg)}</td>
-    </tr>`;
+    return `<tr><td>${longDate(dates[i])}</td><td class="num">${money(v, 4)}</td>
+      <td class="num ${abs === null ? "flat" : kind(abs)}">${abs === null ? "—" : signed(abs)}</td>
+      <td class="num ${pct === null ? "flat" : kind(pct)}">${pct === null ? "—" : percent(pct)}</td>
+      <td class="num ${kind(fromAvg)}">${percent(fromAvg)}</td></tr>`;
   }).reverse().join("");
-  compareChart($("compareChart"));
+  const ups = values.slice(1).filter((v, i) => v > values[i]).length;
+  const changes = values.slice(1).map((v, i) => (v - values[i]) / values[i] * 100);
+  const best = Math.max(...changes), worst = Math.min(...changes);
+  $("anStats").innerHTML = [
+    ["Период", `${longDate(dates[0])} — ${longDate(dates[dates.length - 1])}`],
+    ["Курсов ЦБ", values.length],
+    ["Мин / Макс", `${money(Math.min(...values), 4)} / ${money(Math.max(...values), 4)}`],
+    ["Среднее", money(avg, 4)],
+    ["Изменение за период", `<span class="${kind(changeOver(r, 0))}">${percent(changeOver(r, 0))}</span>`],
+    ["Дней роста / падения", `${ups} / ${values.length - 1 - ups}`],
+    ["Лучший день", `<span class="${kind(best)}">${percent(best)}</span>`],
+    ["Худший день", `<span class="${kind(worst)}">${percent(worst)}</span>`]
+  ].map(([k, v]) => `<div class="kv"><span>${k}</span><b class="num">${v}</b></div>`).join("");
+  document.querySelectorAll("#cmpSeg button").forEach(b => b.classList.toggle("active", +b.dataset.p === cmpPeriod));
+  compareChart($("cmpChart"));
 }
 
 function renderSettingsInfo() {
@@ -552,45 +874,56 @@ function renderSettingsInfo() {
 function render() {
   if (!rates.length) return;
   if (!current()) selected = rates[0].code;
-  if (tab === "overview") renderOverview();
-  if (tab === "device") renderDevicePage();
-  if (tab === "history") renderHistory();
+  if (tab === "market") renderMarket();
+  if (tab === "device") renderDevice();
+  if (tab === "analytics") renderAnalytics();
   if (tab === "settings") renderSettingsInfo();
 }
 
 function select(code) {
   selected = code;
+  if ($("convFrom").value !== "RUB" && $("convTo").value === "RUB") $("convFrom").value = code;
   render();
 }
 
 function showTab(name) {
-  tab = ["overview", "device", "history", "settings"].includes(name) ? name : "overview";
-  document.querySelectorAll(".tabs a").forEach(a => a.classList.toggle("active", a.dataset.tab === tab));
+  tab = ["market", "device", "analytics", "settings"].includes(name) ? name : "market";
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("active", a.dataset.tab === tab));
   document.querySelectorAll("section").forEach(s => s.classList.toggle("hidden", s.id !== "tab-" + tab));
   render();
-  window.scrollTo(0, 0);
+}
+
+function lockShowcase() {
+  if (!SHOWCASE) return;
+  $("showcaseNote").classList.remove("hidden");
+  document.querySelectorAll("#tab-settings input, #tab-settings button").forEach(el => el.disabled = true);
 }
 
 function fillForm() {
   $("carousel").value = settings.carousel_s;
   $("alert").value = settings.alert_pct;
-  $("chips").innerHTML = Object.keys(NAMES).map(code =>
-    `<label class="chip"><input type="checkbox" value="${code}" ${settings.currencies.includes(code) ? "checked" : ""}> ${code} <span style="color:var(--muted)">${NAMES[code]}</span></label>`
+  $("checks").innerHTML = Object.keys(NAMES).map(code =>
+    `<label class="check"><input type="checkbox" value="${code}" ${settings.currencies.includes(code) ? "checked" : ""}> <b>${code}</b> <span class="k">${NAMES[code]}</span></label>`
   ).join("");
-  $("chips").querySelectorAll("input").forEach(box => box.onchange = updateOutputs);
+  $("checks").querySelectorAll("input").forEach(box => box.onchange = updateOutputs);
   updateOutputs();
+  lockShowcase();
 }
 
 function formSettings() {
   return {
     carousel_s: +$("carousel").value,
     alert_pct: +(+$("alert").value).toFixed(1),
-    currencies: [...$("chips").querySelectorAll("input:checked")].map(box => box.value)
+    currencies: [...$("checks").querySelectorAll("input:checked")].map(box => box.value)
   };
 }
 
 function updateOutputs() {
   const s = formSettings();
+  if (SHOWCASE) {
+    $("carouselOut").textContent = s.carousel_s + " с";
+    $("alertOut").textContent = money(s.alert_pct, 1) + "%";
+  }
   $("carouselOut").textContent = s.carousel_s + " с";
   $("alertOut").textContent = money(s.alert_pct, 1) + "%";
   const rising = rates.filter(r => deviceState(r, s.alert_pct).rising).map(r => r.code);
@@ -598,7 +931,7 @@ function updateOutputs() {
   $("alertPreview").innerHTML = `С таким порогом сейчас: светодиод — <b>${rising.join(", ") || "ни у одной валюты"}</b>, пищалка — <b>${falling.join(", ") || "ни у одной валюты"}</b>.`;
   $("cyclePreview").innerHTML = s.currencies.length
     ? `На устройстве по кругу: <b>${s.currencies.join(" → ")}</b>. Полный круг займёт <b>${s.currencies.length * s.carousel_s} с</b>.`
-    : `<span class="bad">Выберите хотя бы одну валюту.</span>`;
+    : `<span class="down">Выберите хотя бы одну валюту.</span>`;
   const changed = JSON.stringify(s) !== JSON.stringify({ carousel_s: settings.carousel_s, alert_pct: settings.alert_pct, currencies: settings.currencies });
   $("save").disabled = s.currencies.length === 0 || !changed;
   $("cancel").disabled = !changed;
@@ -607,23 +940,32 @@ function updateOutputs() {
 function showError(text, state) {
   $("error").textContent = text;
   $("error").classList.remove("hidden");
-  $("sourceText").innerHTML = `<span class="bad dot">${state}</span>`;
+  $("sourceChip").textContent = state;
+  $("sourceChip").style.setProperty("--c", "var(--down)");
 }
 
 async function loadRates() {
   try {
-    const response = await fetch("/api/rates?all=true");
+    const response = await fetch(SHOWCASE ? "data/rates.json" : "/api/rates?all=true");
     if (!response.ok) throw new Error();
     const data = await response.json();
     if (!Array.isArray(data.rates) || !data.rates.length) {
       showError("Сервер ответил, но курсов в ответе нет. Страница попробует снова через минуту.", "нет курсов");
       return;
     }
+    previous = Object.fromEntries(rates.map(r => [r.code, r.rate]));
     rates = data.rates;
-    const demo = data.source !== "cbr";
-    $("sourceText").innerHTML = demo ? `<span class="warn dot">демо-данные</span>` : `ЦБ РФ · ${longDate(data.date)}`;
-    $("sysSource").innerHTML = demo ? `<span class="warn">демо-данные</span>` : `ЦБ РФ, курсы на ${longDate(data.date)}`;
+    if (!selected) selected = rates.find(r => r.code === "USD") ? "USD" : rates[0].code;
+    const demo = data.source === "demo";
+    const sourceName = data.source === "cbr-mirror" ? "ЦБ РФ (зеркало)" : "ЦБ РФ";
+    $("sourceChip").textContent = demo ? "демо-данные" : `${sourceName} · ${longDate(data.date)}`;
+    $("sourceChip").style.setProperty("--c", demo ? "var(--accent)" : "var(--up)");
+    $("sysSource").innerHTML = demo ? `<span style="color:var(--accent)">демо-данные</span>` : `${sourceName}, курсы на ${longDate(data.date)}`;
+    if (SHOWCASE && data.updated) $("sysLoaded").textContent = new Date(data.updated).toLocaleString("ru-RU", { timeZone: "Asia/Vladivostok", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " (Владивосток)";
+    $("ovDate").textContent = demo ? "демо-данные" : `курсы ЦБ на ${longDate(data.date)}`;
     $("error").classList.add("hidden");
+    renderTape();
+    convOptions();
     render();
   } catch (e) {
     showError("Нет связи с сервером. Проверьте, что он запущен. Страница попробует снова через минуту.", "сервер недоступен");
@@ -637,31 +979,37 @@ function ago(seconds) {
 }
 
 async function loadStatus() {
+  if (SHOWCASE) {
+    $("deviceChip").textContent = "витрина · устройство подключается к домашнему серверу";
+    $("deviceChip").style.setProperty("--c", "var(--accent)");
+    $("sysDevice").textContent = "на витрине не отображается";
+    return;
+  }
   try {
     const response = await fetch("/api/status");
     if (!response.ok) throw new Error();
     const data = await response.json();
-    let text, cls;
+    let text, color;
     if (data.device_seen_ago_s === null) {
       text = "устройство не подключалось";
-      cls = "bad";
+      color = "var(--down)";
     } else {
-      text = (data.device_online ? "онлайн · " : "не на связи · ") + ago(data.device_seen_ago_s);
-      cls = data.device_online ? "ok" : "bad";
+      text = (data.device_online ? "устройство онлайн · " : "устройство не на связи · ") + ago(data.device_seen_ago_s);
+      color = data.device_online ? "var(--up)" : "var(--down)";
     }
-    $("deviceText").textContent = text;
-    $("deviceText").className = "dot " + cls;
-    $("sysDevice").innerHTML = `<span class="${cls}">${text}</span>`;
+    $("deviceChip").textContent = text;
+    $("deviceChip").style.setProperty("--c", color);
+    $("sysDevice").innerHTML = `<span style="color:${color}">${text}</span>`;
     $("sysLoaded").textContent = data.cbr_loaded_ago_s === null ? "ещё не загружены" : ago(data.cbr_loaded_ago_s);
   } catch (e) {
-    $("deviceText").textContent = "нет данных";
-    $("deviceText").className = "dot bad";
+    $("deviceChip").textContent = "нет данных";
+    $("deviceChip").style.setProperty("--c", "var(--down)");
   }
 }
 
 async function loadSettings() {
   try {
-    const response = await fetch("/api/settings");
+    const response = await fetch(SHOWCASE ? "data/settings.json" : "/api/settings");
     if (!response.ok) throw new Error();
     const data = await response.json();
     if (!Array.isArray(data.currencies)) throw new Error();
@@ -675,22 +1023,37 @@ async function loadSettings() {
 async function saveSettings(data) {
   $("save").disabled = true;
   try {
-    const response = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    });
+    const response = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
     if (!response.ok) throw new Error();
     settings = await response.json();
     fillForm();
     render();
     toast("Сохранено. Устройство применит настройки в течение минуты");
   } catch (e) {
-    toast("Не удалось сохранить настройки");
+    toast("Не удалось сохранить настройки", false);
     updateOutputs();
   }
 }
 
+function tickClock() {
+  const now = new Date();
+  const fmt = zone => now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: zone });
+  $("clockVl").textContent = fmt("Asia/Vladivostok");
+  $("clockMsk").textContent = fmt("Europe/Moscow");
+}
+
+document.querySelectorAll("#periodSeg button").forEach(b => b.onclick = () => { period = +b.dataset.p; render(); });
+document.querySelectorAll("#typeSeg button").forEach(b => b.onclick = () => { chartType = b.dataset.t; render(); });
+document.querySelectorAll("#cmpSeg button").forEach(b => b.onclick = () => { cmpPeriod = +b.dataset.p; render(); });
+document.querySelectorAll("#ovTable th[data-s]").forEach(th => th.onclick = () => {
+  if (sortKey === th.dataset.s) sortAsc = !sortAsc;
+  else { sortKey = th.dataset.s; sortAsc = th.dataset.s === "code"; }
+  renderOverview();
+});
+$("convAmount").oninput = convert;
+$("convFrom").onchange = convert;
+$("convTo").onchange = convert;
+$("convSwap").onclick = () => { const a = $("convFrom").value; $("convFrom").value = $("convTo").value; $("convTo").value = a; convert(); };
 $("carousel").oninput = updateOutputs;
 $("alert").oninput = updateOutputs;
 $("save").onclick = () => saveSettings(formSettings());
@@ -699,6 +1062,9 @@ $("reset").onclick = () => saveSettings(DEFAULTS);
 window.onhashchange = () => showTab(location.hash.slice(1));
 window.onresize = render;
 
+tickClock();
+if (SHOWCASE) $("footer").textContent = "Публичная витрина проекта «Валютный флюгер». Данные: Банк России, обновление раз в час.";
+setInterval(tickClock, 10000);
 loadSettings().then(loadRates).then(() => showTab(location.hash.slice(1)));
 loadStatus();
 setInterval(loadRates, 60000);

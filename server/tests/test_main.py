@@ -104,3 +104,12 @@ def test_index_page():
     response = client.get("/")
     assert response.status_code == 200
     assert "Валютный флюгер" in response.text
+
+
+def test_long_history_only_for_site():
+    device = client.get("/api/rates").json()["rates"][0]
+    assert "history_long" not in device
+    site = client.get("/api/rates?all=true").json()["rates"][0]
+    assert len(site["history_long"]) == cbr.LONG_SIZE
+    assert len(site["dates_long"]) == cbr.LONG_SIZE
+    assert site["history_long"][-8:] == site["history"]

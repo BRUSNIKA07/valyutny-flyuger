@@ -1,4 +1,5 @@
 import json
+import math
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -43,7 +44,18 @@ def demo_dates(count):
     return list(reversed(days))
 
 
+def demo_long(history):
+    values = list(history)
+    step = (history[-1] - history[0]) / len(history)
+    while len(values) < cbr.LONG_SIZE:
+        k = len(values)
+        wave = math.sin(k * 1.7) * 0.6 + math.cos(k * 0.6) * 0.8
+        values.insert(0, round(values[0] - step * 0.7 + abs(step) * wave + history[0] * 0.001 * math.sin(k), 4))
+    return values
+
+
 def demo_rate(code, nominal, history):
+    long = demo_long(history)
     return {
         "code": code,
         "nominal": nominal,
@@ -51,6 +63,8 @@ def demo_rate(code, nominal, history):
         "change": cbr.change_percent(history),
         "history": history,
         "dates": demo_dates(len(history)),
+        "history_long": long,
+        "dates_long": demo_dates(len(long)),
     }
 
 
@@ -111,6 +125,10 @@ async def lifespan(app):
 app = FastAPI(title="Валютный флюгер", lifespan=lifespan)
 
 
+def short_rate(rate):
+    return {key: value for key, value in rate.items() if key not in ("history_long", "dates_long")}
+
+
 def current_rates(all_currencies=False):
     settings = load_settings()
     if cbr_rates is None:
@@ -119,7 +137,7 @@ def current_rates(all_currencies=False):
         data, source = cbr_rates, "cbr"
     rates = data["rates"]
     if not all_currencies:
-        rates = [rate for rate in rates if rate["code"] in settings["currencies"]]
+        rates = [short_rate(rate) for rate in rates if rate["code"] in settings["currencies"]]
     return {
         "date": data["date"],
         "source": source,

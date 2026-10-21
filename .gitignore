@@ -22,3 +22,6 @@ firmware/src/fluger_config.h
 
 # Сервер: настройки с сайта
 server/settings.json
+
+# Витрина для GitHub Pages
+_site/

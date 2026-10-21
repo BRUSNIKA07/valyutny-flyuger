@@ -6,7 +6,8 @@ DAILY_URL = "https://www.cbr.ru/scripts/XML_daily.asp"
 DYNAMIC_URL = "https://www.cbr.ru/scripts/XML_dynamic.asp?date_req1={}&date_req2={}&VAL_NM_RQ={}"
 CODES = ["CNY", "USD", "EUR", "KZT", "MNT"]
 HISTORY_SIZE = 8
-RANGE_DAYS = 20
+LONG_SIZE = 30
+RANGE_DAYS = 50
 TIMEOUT_S = 10
 USER_AGENT = "valyutny-flyuger/1.0"
 
@@ -62,7 +63,8 @@ def make_rate(code, valute, records, day):
     for record_day, nominal, value in records:
         values[record_day] = value * valute["nominal"] / nominal
     values[day] = valute["rate"]
-    days = sorted(values)[-HISTORY_SIZE:]
+    long_days = sorted(values)[-LONG_SIZE:]
+    days = long_days[-HISTORY_SIZE:]
     history = [round(values[d], 4) for d in days]
     return {
         "code": code,
@@ -71,6 +73,8 @@ def make_rate(code, valute, records, day):
         "change": change_percent(history),
         "history": history,
         "dates": [d.isoformat() for d in days],
+        "history_long": [round(values[d], 4) for d in long_days],
+        "dates_long": [d.isoformat() for d in long_days],
     }
 
 
