@@ -62,13 +62,15 @@ def make_rate(code, valute, records, day):
     for record_day, nominal, value in records:
         values[record_day] = value * valute["nominal"] / nominal
     values[day] = valute["rate"]
-    history = [round(values[d], 4) for d in sorted(values)][-HISTORY_SIZE:]
+    days = sorted(values)[-HISTORY_SIZE:]
+    history = [round(values[d], 4) for d in days]
     return {
         "code": code,
         "nominal": valute["nominal"],
         "rate": history[-1],
         "change": change_percent(history),
         "history": history,
+        "dates": [d.isoformat() for d in days],
     }
 
 

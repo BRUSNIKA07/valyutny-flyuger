@@ -7,7 +7,7 @@
 ```
 firmware/   прошивка ESP32 (C++, PlatformIO) и схема для Wokwi
 server/     сервер на Python (FastAPI), отдаёт курсы устройству
-web/        страница для пользователя (пока заготовка)
+web/        сайт: курсы, графики и настройки устройства
 docs/       описание архитектуры, правила работы с git, презентации
 ```
 
@@ -29,6 +29,8 @@ python -m venv .venv
 cd server
 .venv\Scripts\python -m uvicorn app.main:app --reload --host 0.0.0.0
 ```
+
+Сайт с курсами и настройками открывается по адресу http://127.0.0.1:8000/, пока сервер запущен.
 
 Симуляция: в VS Code открыть папку `firmware`, собрать проект (PlatformIO: Build), потом F1 → «Wokwi: Start Simulator». Сервер в это время должен работать.
 

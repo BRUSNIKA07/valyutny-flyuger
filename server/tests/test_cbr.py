@@ -40,6 +40,8 @@ def test_make_rate_takes_last_8():
     rate = cbr.make_rate("USD", valutes["USD"], records, day)
     assert rate["history"] == [82.55, 82.5, 82.4, 82.35, 82.3, 82.25, 82.39, 81.9876]
     assert rate["rate"] == rate["history"][-1] == 81.9876
+    assert rate["dates"][0] == "2026-10-09"
+    assert rate["dates"][-1] == "2026-10-20"
     assert rate["change"] == -0.49
     assert rate["nominal"] == 1
 
@@ -49,6 +51,7 @@ def test_make_rate_adds_today_if_missing():
     records = [(date(2026, 10, 16), 100, 16.0), (date(2026, 10, 17), 100, 16.1)]
     rate = cbr.make_rate("KZT", valute, records, date(2026, 10, 20))
     assert rate["history"] == [16.0, 16.1, 16.2]
+    assert rate["dates"] == ["2026-10-16", "2026-10-17", "2026-10-20"]
     assert rate["change"] == 0.62
 
 

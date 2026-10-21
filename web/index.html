@@ -1,8 +1,708 @@
 <!doctype html>
 <html lang="ru">
-<head><meta charset="utf-8"><title>Валютный флюгер</title></head>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Валютный флюгер</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f59e0b'/%3E%3Cpath d='M10 26V7h12l-3 5 3 5H10' fill='none' stroke='%23fff' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #0c0f14;
+  --card: #131820;
+  --card2: #0e1218;
+  --line: #1f2632;
+  --text: #e6e9ef;
+  --muted: #7c8598;
+  --accent: #f59e0b;
+  --up: #34d399;
+  --down: #f87171;
+  --led: #ff4d3d;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", Inter, system-ui, sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+.page { max-width: 1180px; margin: 0 auto; padding: 22px 16px 48px; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+.logo i { width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #f59e0b, #ef4444); display: grid; place-items: center; }
+.tabs { display: flex; background: #151a22; border: 1px solid var(--line); border-radius: 10px; padding: 3px; overflow-x: auto; }
+.tabs a { padding: 7px 16px; border-radius: 7px; color: #8b94a7; font-weight: 600; white-space: nowrap; }
+.tabs a.active { background: #232a36; color: #fff; }
+.status { color: var(--muted); font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
+.dot::before { content: "●"; margin-right: 5px; }
+.ok { color: var(--up); }
+.warn { color: var(--accent); }
+.bad { color: var(--down); }
+.k { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.tile { background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--muted); }
+.hidden { display: none !important; }
+.error { margin-top: 16px; background: #2a1517; color: var(--down); border: 1px solid #5b2a2a; padding: 12px 16px; border-radius: 12px; }
+h2 { margin: 0 0 4px; font-size: 20px; }
+.lead { color: var(--muted); margin: 0 0 18px; }
+
+section { margin-top: 22px; }
+.list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; transition: border-color .15s, transform .15s; }
+.item:hover { transform: translateY(-2px); }
+.item.active { border-color: var(--accent); background: #1a1810; }
+.item .top { display: flex; justify-content: space-between; font-weight: 700; }
+.item .top span { font-size: 12px; }
+.item .val { font-size: 18px; font-weight: 600; }
+.item .per { font-size: 11px; color: var(--muted); font-weight: 400; }
+.item svg { display: block; width: 100%; height: 22px; margin-top: 4px; }
+
+.two { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; }
+.device { background: radial-gradient(120% 120% at 0 0, #1a2130 0, #11151c 60%); }
+.big-matrix { margin-top: 10px; background: #050608; border: 1px solid #1d222b; border-radius: 8px; padding: 10px 14px; font: 700 30px Consolas, monospace; letter-spacing: 3px; color: var(--led); text-shadow: 0 0 10px #ff4d3d90; -webkit-mask: radial-gradient(circle, #000 58%, transparent 62%) 0 0 / 4px 4px; mask: radial-gradient(circle, #000 58%, transparent 62%) 0 0 / 4px 4px; white-space: nowrap; overflow: hidden; }
+.small-matrix { display: grid; grid-auto-flow: column; grid-template-rows: repeat(8, 6px); gap: 2px; width: fit-content; margin-top: 10px; background: #050608; padding: 10px; border-radius: 8px; border: 1px solid #1d222b; }
+.small-matrix i { width: 6px; height: 6px; border-radius: 50%; background: #171b22; }
+.small-matrix i.on { background: var(--led); box-shadow: 0 0 4px var(--led); }
+.row3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin-top: 16px; }
+.row3 .tile b { display: block; font-size: 16px; margin-top: 4px; }
+.row3 .tile small { color: var(--muted); }
+.gauge svg { display: block; max-width: 240px; margin: 0 auto; }
+.led { width: 22px; height: 22px; border-radius: 50%; background: #16301f; border: 2px solid #22303d; margin-top: 8px; }
+.led.on { background: #22c55e; box-shadow: 0 0 14px #22c55e; animation: blink .6s steps(1) infinite; }
+@keyframes blink { 50% { opacity: .3; } }
+.buzz.on { border-color: #5b2a2a; background: #1a1012; }
+.notes { font-size: 22px; margin-top: 4px; color: #3a4252; }
+.buzz.on .notes { color: var(--down); }
+.bigrate { font-size: 44px; font-weight: 700; letter-spacing: -1px; line-height: 1.15; }
+.chart { display: block; width: 100%; }
+.chart-wrap { position: relative; }
+.tip { position: absolute; z-index: 2; pointer-events: none; background: #e6e9ef; color: #0c0f14; padding: 6px 10px; border-radius: 8px; font-size: 12px; width: max-content; max-width: 100%; transform: translate(-50%, -125%); }
+.more { display: inline-block; margin-top: 10px; font-weight: 600; font-size: 13px; }
+
+.pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.pill { border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.pill.active { border-color: var(--accent); color: var(--accent); background: #1a1810; }
+.explain { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+.explain .tile b { display: block; margin-bottom: 4px; }
+.explain .tile p { margin: 0; color: var(--muted); font-size: 13px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+th { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+td.n { white-space: nowrap; }
+tr.sel td { background: #1a1810; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 13px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; background: var(--c); }
+
+.form .field { padding: 16px 0; border-top: 1px solid var(--line); }
+.form .field:first-of-type { border-top: 0; padding-top: 0; }
+.form label { font-weight: 600; display: flex; justify-content: space-between; }
+.form label output { color: var(--accent); }
+.form p { margin: 4px 0 10px; color: var(--muted); font-size: 13px; }
+input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; user-select: none; }
+.chip input { accent-color: var(--accent); margin: 0; }
+.chip:has(input:checked) { border-color: var(--accent); background: #1a1810; }
+.preview { margin-top: 12px; background: var(--card2); border: 1px dashed var(--line); border-radius: 12px; padding: 12px; font-size: 13px; color: var(--muted); }
+.preview b { color: var(--text); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.btn { border: 0; border-radius: 10px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+.btn.main { background: var(--accent); color: #111; }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.ghost { background: #232a36; color: var(--text); }
+.kv { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); gap: 12px; }
+.kv:first-of-type { border-top: 0; }
+.kv span { color: var(--muted); }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #e6e9ef; color: #0c0f14; padding: 10px 18px; border-radius: 10px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 32px; }
+
+@media (max-width: 900px) {
+  .list { grid-template-columns: repeat(3, 1fr); }
+  .two, .explain { grid-template-columns: minmax(0, 1fr); }
+  .big-matrix { font-size: 22px; }
+}
+@media (max-width: 560px) {
+  .list { grid-template-columns: repeat(2, 1fr); }
+  .tabs { width: 100%; }
+  .tabs a { flex: 1; text-align: center; padding: 7px 6px; }
+  .row3 { grid-template-columns: 1fr; }
+  table { font-size: 13px; }
+  th, td { padding: 8px 6px; }
+  .bigrate { font-size: 34px; }
+  .big-matrix { font-size: 17px; letter-spacing: 2px; }
+}
+</style>
+</head>
 <body>
-  <h1>Валютный флюгер</h1>
-  <p>Здесь будет страница: курсы, график за неделю, настройки устройства.</p>
+<div class="page">
+  <header>
+    <div class="logo">
+      <i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4M4 5h11l-3 4 3 4H4"/></svg></i>
+      Валютный флюгер
+    </div>
+    <nav class="tabs">
+      <a href="#overview" data-tab="overview">Обзор</a>
+      <a href="#device" data-tab="device">Устройство</a>
+      <a href="#history" data-tab="history">История</a>
+      <a href="#settings" data-tab="settings">Настройки</a>
+    </nav>
+    <div class="status">
+      <span id="sourceText">Загрузка…</span>
+      <span id="deviceText" class="dot">устройство</span>
+    </div>
+  </header>
+
+  <div id="error" class="error hidden"></div>
+
+  <section id="tab-overview">
+    <div class="list" id="list"></div>
+    <div class="two">
+      <div class="card device">
+        <div class="k">Устройство сейчас · <span id="ovCode"></span></div>
+        <div class="big-matrix" id="ovMatrix"></div>
+        <div class="small-matrix" id="ovBars"></div>
+        <div class="row3">
+          <div class="tile"><div class="k">Флюгер</div><div class="gauge" id="ovGauge"></div><b id="ovAngle" style="text-align:center"></b></div>
+          <div class="tile"><div class="k">Светодиод роста</div><div class="led" id="ovLed"></div><b id="ovLedText"></b><small id="ovLedNote"></small></div>
+          <div class="tile buzz" id="ovBuzz"><div class="k">Пищалка</div><div class="notes">♪ ♪ ♪</div><b id="ovBuzzText"></b><small id="ovBuzzNote"></small></div>
+        </div>
+        <a class="more" href="#device">Подробнее об устройстве →</a>
+      </div>
+      <div class="card">
+        <div class="k" id="ovName"></div>
+        <div class="bigrate" id="ovRate"></div>
+        <div id="ovChanges"></div>
+        <div class="chart-wrap"><svg class="chart" id="ovChart" height="250"></svg><div class="tip hidden"></div></div>
+        <a class="more" href="#history">Вся история и таблица →</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-device" class="hidden">
+    <h2>Устройство</h2>
+    <p class="lead">Так выглядит флюгер для выбранной валюты. Выберите валюту, чтобы посмотреть, что покажет каждый элемент.</p>
+    <div class="pills" id="devPills"></div>
+    <div class="card device">
+      <div class="k">Большая матрица · 8 модулей</div>
+      <div class="big-matrix" id="devMatrix"></div>
+      <div class="k" style="margin-top:14px">Маленькая матрица · 4 модуля · 8 последних курсов</div>
+      <div class="small-matrix" id="devBars"></div>
+      <div class="row3">
+        <div class="tile"><div class="k">Флюгер</div><div class="gauge" id="devGauge"></div><b id="devAngle" style="text-align:center"></b></div>
+        <div class="tile"><div class="k">Светодиод роста</div><div class="led" id="devLed"></div><b id="devLedText"></b><small id="devLedNote"></small></div>
+        <div class="tile buzz" id="devBuzz"><div class="k">Пищалка</div><div class="notes">♪ ♪ ♪</div><b id="devBuzzText"></b><small id="devBuzzNote"></small></div>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="tile"><b>Большая матрица</b><p>Код валюты, курс в рублях и изменение за день со стрелкой. Для KZT и MNT курс за 100 единиц, как у ЦБ.</p></div>
+      <div class="tile"><b>Маленькая матрица</b><p>8 столбиков — 8 последних курсов ЦБ, слева старый, справа новый. Самый низкий курс — 1 точка, самый высокий — 8. Цифры есть во вкладке «История».</p></div>
+      <div class="tile"><b>Флюгер</b><p>Где курс сейчас относительно среднего за 8 курсов. 90° — на уровне среднего, влево до 0° — ниже на 3% и больше, вправо до 180° — выше.</p></div>
+      <div class="tile"><b>Зелёный светодиод</b><p>Мигает, если за день курс вырос на порог или больше. Порог меняется в настройках.</p></div>
+      <div class="tile"><b>Пищалка</b><p>Пищит три раза, когда на экране появляется валюта, упавшая за день на порог или больше.</p></div>
+      <div class="tile"><b>Кнопка</b><p>Короткое нажатие — следующая валюта, долгое (0,8 с) — переключение AUTO и MANUAL. В AUTO валюты меняются сами.</p></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="k" style="margin-bottom:8px">Все валюты на устройстве</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Валюта</th><th>Матрица</th><th class="n">Флюгер</th><th>Светодиод</th><th>Пищалка</th><th>Показ</th></tr></thead>
+          <tbody id="devTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-history" class="hidden">
+    <h2>История курсов</h2>
+    <p class="lead">8 последних курсов ЦБ по каждой валюте. Наведите на точку, чтобы увидеть дату и курс.</p>
+    <div class="pills" id="histPills"></div>
+    <div class="card">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px">
+        <div><div class="k" id="histName"></div><div class="bigrate" id="histRate"></div></div>
+        <div id="histChanges" style="text-align:right"></div>
+      </div>
+      <div class="chart-wrap"><svg class="chart" id="histChart" height="320"></svg><div class="tip hidden"></div></div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <div class="k" style="margin-bottom:8px">Курсы по дням</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Дата</th><th class="n">Курс</th><th class="n">За день</th><th class="n">От среднего</th></tr></thead>
+            <tbody id="histTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="k">Сравнение валют</div>
+        <p class="lead" style="margin:4px 0 0">Изменение в процентах от первого курса периода</p>
+        <div class="chart-wrap"><svg class="chart" id="compareChart" height="260"></svg><div class="tip hidden"></div></div>
+        <div class="legend" id="compareLegend"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-settings" class="hidden">
+    <h2>Настройки</h2>
+    <p class="lead">Устройство спрашивает сервер раз в минуту, поэтому сохранённые настройки появятся на нём в течение минуты.</p>
+    <div class="two">
+      <div class="card form">
+        <div class="field">
+          <label for="carousel">Время показа одной валюты <output id="carouselOut"></output></label>
+          <p>Через сколько секунд устройство переключается на следующую валюту в режиме AUTO.</p>
+          <input type="range" id="carousel" min="3" max="60" step="1">
+        </div>
+        <div class="field">
+          <label for="alert">Сильное изменение курса <output id="alertOut"></output></label>
+          <p>Если за день курс вырос на это значение или больше — мигает зелёный светодиод. Если упал — пищит пищалка.</p>
+          <input type="range" id="alert" min="0.1" max="5" step="0.1">
+          <div class="preview" id="alertPreview"></div>
+        </div>
+        <div class="field">
+          <label>Валюты на устройстве</label>
+          <p>Какие валюты показывать на матрице. Нужна хотя бы одна. На сайте видны все.</p>
+          <div class="chips" id="chips"></div>
+          <div class="preview" id="cyclePreview"></div>
+        </div>
+        <div class="actions">
+          <button class="btn main" id="save">Сохранить</button>
+          <button class="btn ghost" id="cancel">Отменить изменения</button>
+          <button class="btn ghost" id="reset">По умолчанию</button>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="k" style="margin-bottom:6px">Состояние системы</div>
+          <div class="kv"><span>Источник курсов</span><b id="sysSource"></b></div>
+          <div class="kv"><span>Курсы ЦБ загружены</span><b id="sysLoaded"></b></div>
+          <div class="kv"><span>Устройство</span><b id="sysDevice"></b></div>
+          <div class="kv"><span>Сервер обновляет курсы</span><b>раз в час</b></div>
+          <div class="kv"><span>Устройство спрашивает сервер</span><b>раз в минуту</b></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="k" style="margin-bottom:6px">Сохранено сейчас</div>
+          <div class="kv"><span>Показ валюты</span><b id="curCarousel"></b></div>
+          <div class="kv"><span>Порог</span><b id="curAlert"></b></div>
+          <div class="kv"><span>Валюты</span><b id="curCurrencies"></b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Данные: Банк России · страница обновляется раз в минуту</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const NAMES = {
+  CNY: "Китайский юань",
+  USD: "Доллар США",
+  EUR: "Евро",
+  KZT: "Казахстанский тенге",
+  MNT: "Монгольский тугрик"
+};
+const COLORS = { CNY: "#f59e0b", USD: "#60a5fa", EUR: "#a78bfa", KZT: "#34d399", MNT: "#f472b6" };
+const DEFAULTS = { carousel_s: 10, alert_pct: 1.0, currencies: ["CNY", "USD", "EUR", "KZT", "MNT"] };
+const SCALE_PERCENT = 3;
+
+let rates = [];
+let settings = { ...DEFAULTS };
+let selected = null;
+let tab = "overview";
+
+const $ = id => document.getElementById(id);
+const money = (v, d = 2) => v.toLocaleString("ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d });
+const percent = v => { v = Math.round(v * 100) / 100; return (v > 0 ? "+" : v < 0 ? "−" : "") + money(Math.abs(v)) + "%"; };
+const kind = v => { v = Math.round(v * 100) / 100; return v > 0 ? "up" : v < 0 ? "down" : "flat"; };
+const average = list => list.reduce((a, b) => a + b, 0) / list.length;
+const periodChange = r => (r.history[r.history.length - 1] - r.history[0]) / r.history[0] * 100;
+const shortDate = s => s ? s.slice(8, 10) + "." + s.slice(5, 7) : "";
+const longDate = s => s ? s.slice(8, 10) + "." + s.slice(5, 7) + "." + s.slice(0, 4) : "";
+const per = r => r.nominal > 1 ? ` за ${r.nominal}` : "";
+const current = () => rates.find(r => r.code === selected);
+
+function toast(text) {
+  $("toast").textContent = text;
+  $("toast").classList.add("show");
+  setTimeout(() => $("toast").classList.remove("show"), 2500);
+}
+
+function deviceState(r, alertPct = settings.alert_pct) {
+  const avg = average(r.history);
+  const diff = (r.rate - avg) / avg * 100;
+  const clamped = Math.max(-SCALE_PERCENT, Math.min(SCALE_PERCENT, diff));
+  const angle = 90 + Math.round(clamped / SCALE_PERCENT * 90);
+  const arrow = r.change > 0 ? "▲" : r.change < 0 ? "▼" : "";
+  const rateText = r.nominal > 1 ? `${r.code} ${r.rate.toFixed(2)}/${r.nominal}` : `${r.code} ${r.rate.toFixed(2)}`;
+  return {
+    matrix: `${rateText} ${arrow}${Math.abs(r.change).toFixed(2)}`,
+    angle,
+    diff,
+    rising: r.change >= alertPct,
+    falling: r.change <= -alertPct
+  };
+}
+
+function gauge(angle) {
+  let s = `<svg viewBox="0 0 220 130" width="100%"><path d="M20 115a90 90 0 0 1 180 0" fill="none" stroke="#1f2632" stroke-width="14" stroke-linecap="round"/>`;
+  s += `<path d="M20 115a90 90 0 0 1 90 -90" fill="none" stroke="#f87171" stroke-width="14" stroke-linecap="round" opacity=".18"/>`;
+  s += `<path d="M110 25a90 90 0 0 1 90 90" fill="none" stroke="#34d399" stroke-width="14" stroke-linecap="round" opacity=".18"/>`;
+  for (let k = 0; k <= 12; k++) {
+    const a = Math.PI - k * Math.PI / 12, r1 = k % 6 === 0 ? 66 : 72;
+    s += `<line x1="${110 + r1 * Math.cos(a)}" y1="${115 - r1 * Math.sin(a)}" x2="${110 + 80 * Math.cos(a)}" y2="${115 - 80 * Math.sin(a)}" stroke="#7c8598" stroke-width="${k % 6 === 0 ? 2 : 1}"/>`;
+  }
+  const a = (180 - angle) * Math.PI / 180;
+  s += `<line x1="110" y1="115" x2="${110 + 70 * Math.cos(a)}" y2="${115 - 70 * Math.sin(a)}" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/><circle cx="110" cy="115" r="8" fill="#f59e0b"/>`;
+  s += `<text x="16" y="128" font-size="10" fill="#7c8598">−3%</text><text x="110" y="14" font-size="10" fill="#7c8598" text-anchor="middle">среднее</text><text x="204" y="128" font-size="10" fill="#7c8598" text-anchor="end">+3%</text></svg>`;
+  return s;
+}
+
+function bars(history) {
+  const min = Math.min(...history), max = Math.max(...history);
+  let s = "";
+  history.forEach((v, i) => {
+    const level = max > min ? 1 + Math.round((v - min) / (max - min) * 7) : 4;
+    for (let k = 0; k < 3; k++) {
+      for (let row = 0; row < 8; row++) s += `<i class="${8 - row <= level ? "on" : ""}"></i>`;
+    }
+    if (i < history.length - 1) s += "<i></i>".repeat(8);
+  });
+  return s;
+}
+
+function sparkline(history, color) {
+  const w = 160, h = 22, min = Math.min(...history), max = Math.max(...history);
+  const pts = history.map((v, i) => `${(i / (history.length - 1) * w).toFixed(1)},${(max === min ? h / 2 : 2 + (max - v) / (max - min) * (h - 4)).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function attachTips(svg, points, text) {
+  const tip = svg.parentElement.querySelector(".tip");
+  const w = svg.viewBox.baseVal.width;
+  svg.querySelectorAll("rect[data-i]").forEach(rect => {
+    rect.onmouseenter = () => {
+      const i = +rect.dataset.i;
+      tip.innerHTML = text(i);
+      tip.classList.remove("hidden");
+      const width = svg.clientWidth, half = tip.offsetWidth / 2;
+      tip.style.left = Math.min(Math.max(points[i][0] / w * width, half), width - half) + "px";
+      tip.style.top = points[i][1] + "px";
+    };
+    rect.onmouseleave = () => tip.classList.add("hidden");
+  });
+}
+
+function lineChart(svg, r) {
+  const w = svg.clientWidth || 480, h = +svg.getAttribute("height");
+  const left = 56, right = 24, top = 16, bottom = 26;
+  const values = r.history, dates = r.dates || [];
+  let min = Math.min(...values), max = Math.max(...values);
+  const pad = (max - min) * 0.15 || max * 0.01;
+  min -= pad;
+  max += pad;
+  const x = i => left + i / (values.length - 1) * (w - left - right);
+  const y = v => top + (max - v) / (max - min) * (h - top - bottom);
+  const color = periodChange(r) >= 0 ? "#34d399" : "#f87171";
+  const avg = average(values);
+  let s = `<defs><linearGradient id="fill-${svg.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".22"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>`;
+  for (let k = 0; k <= 4; k++) {
+    const v = min + (max - min) * k / 4;
+    s += `<line x1="${left}" x2="${w - right}" y1="${y(v)}" y2="${y(v)}" stroke="#1c222d"/><text x="${left - 8}" y="${y(v) + 4}" font-size="11" fill="#6b7385" text-anchor="end">${money(v)}</text>`;
+  }
+  s += `<line x1="${left}" x2="${w - right}" y1="${y(avg)}" y2="${y(avg)}" stroke="#f59e0b" stroke-dasharray="5 4"/><text x="${w - right}" y="${y(avg) - 6}" font-size="11" fill="#f59e0b" text-anchor="end">среднее ${money(avg)}</text>`;
+  const pts = values.map((v, i) => [x(i), y(v)]);
+  const line = pts.map(p => p.join(",")).join(" ");
+  s += `<polygon points="${x(0)},${h - bottom} ${line} ${x(values.length - 1)},${h - bottom}" fill="url(#fill-${svg.id})"/><polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  const step = (w - left - right) / (values.length - 1);
+  pts.forEach(([px, py], i) => {
+    s += `<circle cx="${px}" cy="${py}" r="${i === values.length - 1 ? 5 : 3.5}" fill="#131820" stroke="${color}" stroke-width="2"/>`;
+    s += `<text x="${px}" y="${h - 8}" font-size="11" fill="#6b7385" text-anchor="middle">${shortDate(dates[i])}</text>`;
+    s += `<rect x="${px - step / 2}" y="${top}" width="${step}" height="${h - top - bottom}" fill="transparent" data-i="${i}"/>`;
+  });
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.innerHTML = s;
+  attachTips(svg, pts, i => {
+    const prev = i > 0 ? (values[i] - values[i - 1]) / values[i - 1] * 100 : null;
+    return `<b>${longDate(dates[i])}</b> · ${money(values[i], 4)} ₽${prev === null ? "" : " · " + percent(prev)}`;
+  });
+}
+
+function compareChart(svg) {
+  const w = svg.clientWidth || 480, h = +svg.getAttribute("height");
+  const left = 44, right = 24, top = 12, bottom = 26;
+  const series = rates.map(r => ({ code: r.code, values: r.history.map(v => (v - r.history[0]) / r.history[0] * 100), dates: r.dates || [] }));
+  const all = series.flatMap(s => s.values);
+  let min = Math.min(...all, 0), max = Math.max(...all, 0);
+  const pad = (max - min) * 0.1 || 1;
+  min -= pad;
+  max += pad;
+  const count = series[0].values.length;
+  const x = i => left + i / (count - 1) * (w - left - right);
+  const y = v => top + (max - v) / (max - min) * (h - top - bottom);
+  let s = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = min + (max - min) * k / 4;
+    s += `<line x1="${left}" x2="${w - right}" y1="${y(v)}" y2="${y(v)}" stroke="#1c222d"/><text x="${left - 6}" y="${y(v) + 4}" font-size="11" fill="#6b7385" text-anchor="end">${money(v, 1)}%</text>`;
+  }
+  s += `<line x1="${left}" x2="${w - right}" y1="${y(0)}" y2="${y(0)}" stroke="#3a4252"/>`;
+  series.forEach(se => {
+    const width = se.code === selected ? 3 : 1.6;
+    const opacity = se.code === selected ? 1 : 0.55;
+    s += `<polyline points="${se.values.map((v, i) => x(i) + "," + y(v)).join(" ")}" fill="none" stroke="${COLORS[se.code]}" stroke-width="${width}" opacity="${opacity}" stroke-linejoin="round"/>`;
+  });
+  const step = (w - left - right) / (count - 1);
+  const pts = [];
+  for (let i = 0; i < count; i++) {
+    s += `<text x="${x(i)}" y="${h - 8}" font-size="11" fill="#6b7385" text-anchor="middle">${shortDate(series[0].dates[i])}</text>`;
+    s += `<rect x="${x(i) - step / 2}" y="${top}" width="${step}" height="${h - top - bottom}" fill="transparent" data-i="${i}"/>`;
+    pts.push([x(i), top + 10]);
+  }
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.innerHTML = s;
+  attachTips(svg, pts, i => `<b>${shortDate(series[0].dates[i])}</b> · ` + series.map(se => `${se.code} ${percent(se.values[i])}`).join(" · "));
+  $("compareLegend").innerHTML = series.map(se => `<span style="--c:${COLORS[se.code]}">${se.code} ${percent(se.values[se.values.length - 1])}</span>`).join("");
+}
+
+function fillDevice(prefix, r) {
+  const st = deviceState(r);
+  $(prefix + "Matrix").textContent = st.matrix;
+  $(prefix + "Bars").innerHTML = bars(r.history);
+  $(prefix + "Gauge").innerHTML = gauge(st.angle);
+  $(prefix + "Angle").textContent = `${st.angle}° · ` + (Math.abs(st.diff) < 0.1 ? "на уровне среднего" : st.diff > 0 ? `выше среднего на ${money(st.diff, 1)}%` : `ниже среднего на ${money(-st.diff, 1)}%`);
+  $(prefix + "Led").classList.toggle("on", st.rising);
+  $(prefix + "LedText").textContent = st.rising ? "Мигает" : "Выключен";
+  $(prefix + "LedNote").textContent = st.rising ? `рост ${percent(r.change)} ≥ ${money(settings.alert_pct, 1)}%` : `рост меньше ${money(settings.alert_pct, 1)}%`;
+  $(prefix + "Buzz").classList.toggle("on", st.falling);
+  $(prefix + "BuzzText").textContent = st.falling ? "3 сигнала" : "Тихо";
+  $(prefix + "BuzzNote").textContent = st.falling ? `падение ${percent(r.change)}` : `падение меньше ${money(settings.alert_pct, 1)}%`;
+}
+
+function pills(id) {
+  $(id).innerHTML = rates.map(r => `<button class="pill ${r.code === selected ? "active" : ""}" data-code="${r.code}">${r.code}</button>`).join("");
+  $(id).querySelectorAll(".pill").forEach(b => b.onclick = () => select(b.dataset.code));
+}
+
+function changesHtml(r) {
+  return `<span class="${kind(r.change)}" style="font-weight:600">${r.change < 0 ? "▼" : r.change > 0 ? "▲" : ""} ${percent(r.change)} за день</span> · <span class="${kind(periodChange(r))}">${percent(periodChange(r))} за ${r.history.length} курсов</span>`;
+}
+
+function renderOverview() {
+  const r = current();
+  $("list").innerHTML = rates.map(x => `<div class="item ${x.code === selected ? "active" : ""}" data-code="${x.code}">
+      <div class="top">${x.code}<span class="${kind(x.change)}">${percent(x.change)}</span></div>
+      <div class="val">${money(x.rate)} ₽ <span class="per">${per(x)}</span></div>
+      ${sparkline(x.history, periodChange(x) >= 0 ? "#34d399" : "#f87171")}
+    </div>`).join("");
+  $("list").querySelectorAll(".item").forEach(el => el.onclick = () => select(el.dataset.code));
+  $("ovCode").textContent = r.code;
+  fillDevice("ov", r);
+  $("ovName").textContent = `${NAMES[r.code] || r.code}${per(r)}`;
+  $("ovRate").textContent = money(r.rate, 4) + " ₽";
+  $("ovChanges").innerHTML = changesHtml(r);
+  lineChart($("ovChart"), r);
+}
+
+function renderDevicePage() {
+  const r = current();
+  pills("devPills");
+  fillDevice("dev", r);
+  $("devTable").innerHTML = rates.map(x => {
+    const st = deviceState(x);
+    const shown = settings.currencies.includes(x.code);
+    return `<tr class="${x.code === selected ? "sel" : ""}">
+      <td><b>${x.code}</b></td>
+      <td style="font-family:Consolas,monospace;color:#ff4d3d">${st.matrix}</td>
+      <td class="n">${st.angle}°</td>
+      <td class="${st.rising ? "up" : "flat"}">${st.rising ? "мигает" : "выкл"}</td>
+      <td class="${st.falling ? "down" : "flat"}">${st.falling ? "3 сигнала" : "тихо"}</td>
+      <td class="${shown ? "" : "flat"}">${shown ? "да" : "скрыта"}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderHistory() {
+  const r = current();
+  pills("histPills");
+  $("histName").textContent = `${NAMES[r.code] || r.code}${per(r)}`;
+  $("histRate").textContent = money(r.rate, 4) + " ₽";
+  $("histChanges").innerHTML = changesHtml(r) + `<div style="color:var(--muted);font-size:13px">мин ${money(Math.min(...r.history))} · макс ${money(Math.max(...r.history))} · среднее ${money(average(r.history))}</div>`;
+  lineChart($("histChart"), r);
+  const avg = average(r.history);
+  $("histTable").innerHTML = r.history.map((v, i) => {
+    const day = i > 0 ? (v - r.history[i - 1]) / r.history[i - 1] * 100 : null;
+    const fromAvg = (v - avg) / avg * 100;
+    return `<tr class="${i === r.history.length - 1 ? "sel" : ""}">
+      <td>${longDate((r.dates || [])[i])}</td>
+      <td class="n">${money(v, 4)} ₽</td>
+      <td class="n ${day === null ? "flat" : kind(day)}">${day === null ? "—" : percent(day)}</td>
+      <td class="n ${kind(fromAvg)}">${percent(fromAvg)}</td>
+    </tr>`;
+  }).reverse().join("");
+  compareChart($("compareChart"));
+}
+
+function renderSettingsInfo() {
+  $("curCarousel").textContent = settings.carousel_s + " с";
+  $("curAlert").textContent = money(settings.alert_pct, 1) + "%";
+  $("curCurrencies").textContent = settings.currencies.join(", ");
+  updateOutputs();
+}
+
+function render() {
+  if (!rates.length) return;
+  if (!current()) selected = rates[0].code;
+  if (tab === "overview") renderOverview();
+  if (tab === "device") renderDevicePage();
+  if (tab === "history") renderHistory();
+  if (tab === "settings") renderSettingsInfo();
+}
+
+function select(code) {
+  selected = code;
+  render();
+}
+
+function showTab(name) {
+  tab = ["overview", "device", "history", "settings"].includes(name) ? name : "overview";
+  document.querySelectorAll(".tabs a").forEach(a => a.classList.toggle("active", a.dataset.tab === tab));
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("hidden", s.id !== "tab-" + tab));
+  render();
+  window.scrollTo(0, 0);
+}
+
+function fillForm() {
+  $("carousel").value = settings.carousel_s;
+  $("alert").value = settings.alert_pct;
+  $("chips").innerHTML = Object.keys(NAMES).map(code =>
+    `<label class="chip"><input type="checkbox" value="${code}" ${settings.currencies.includes(code) ? "checked" : ""}> ${code} <span style="color:var(--muted)">${NAMES[code]}</span></label>`
+  ).join("");
+  $("chips").querySelectorAll("input").forEach(box => box.onchange = updateOutputs);
+  updateOutputs();
+}
+
+function formSettings() {
+  return {
+    carousel_s: +$("carousel").value,
+    alert_pct: +(+$("alert").value).toFixed(1),
+    currencies: [...$("chips").querySelectorAll("input:checked")].map(box => box.value)
+  };
+}
+
+function updateOutputs() {
+  const s = formSettings();
+  $("carouselOut").textContent = s.carousel_s + " с";
+  $("alertOut").textContent = money(s.alert_pct, 1) + "%";
+  const rising = rates.filter(r => deviceState(r, s.alert_pct).rising).map(r => r.code);
+  const falling = rates.filter(r => deviceState(r, s.alert_pct).falling).map(r => r.code);
+  $("alertPreview").innerHTML = `С таким порогом сейчас: светодиод — <b>${rising.join(", ") || "ни у одной валюты"}</b>, пищалка — <b>${falling.join(", ") || "ни у одной валюты"}</b>.`;
+  $("cyclePreview").innerHTML = s.currencies.length
+    ? `На устройстве по кругу: <b>${s.currencies.join(" → ")}</b>. Полный круг займёт <b>${s.currencies.length * s.carousel_s} с</b>.`
+    : `<span class="bad">Выберите хотя бы одну валюту.</span>`;
+  const changed = JSON.stringify(s) !== JSON.stringify({ carousel_s: settings.carousel_s, alert_pct: settings.alert_pct, currencies: settings.currencies });
+  $("save").disabled = s.currencies.length === 0 || !changed;
+  $("cancel").disabled = !changed;
+}
+
+function showError(text, state) {
+  $("error").textContent = text;
+  $("error").classList.remove("hidden");
+  $("sourceText").innerHTML = `<span class="bad dot">${state}</span>`;
+}
+
+async function loadRates() {
+  try {
+    const response = await fetch("/api/rates?all=true");
+    if (!response.ok) throw new Error();
+    const data = await response.json();
+    if (!Array.isArray(data.rates) || !data.rates.length) {
+      showError("Сервер ответил, но курсов в ответе нет. Страница попробует снова через минуту.", "нет курсов");
+      return;
+    }
+    rates = data.rates;
+    const demo = data.source !== "cbr";
+    $("sourceText").innerHTML = demo ? `<span class="warn dot">демо-данные</span>` : `ЦБ РФ · ${longDate(data.date)}`;
+    $("sysSource").innerHTML = demo ? `<span class="warn">демо-данные</span>` : `ЦБ РФ, курсы на ${longDate(data.date)}`;
+    $("error").classList.add("hidden");
+    render();
+  } catch (e) {
+    showError("Нет связи с сервером. Проверьте, что он запущен. Страница попробует снова через минуту.", "сервер недоступен");
+  }
+}
+
+function ago(seconds) {
+  if (seconds < 60) return `${seconds} с назад`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} мин назад`;
+  return `${Math.round(seconds / 3600)} ч назад`;
+}
+
+async function loadStatus() {
+  try {
+    const response = await fetch("/api/status");
+    if (!response.ok) throw new Error();
+    const data = await response.json();
+    let text, cls;
+    if (data.device_seen_ago_s === null) {
+      text = "устройство не подключалось";
+      cls = "bad";
+    } else {
+      text = (data.device_online ? "онлайн · " : "не на связи · ") + ago(data.device_seen_ago_s);
+      cls = data.device_online ? "ok" : "bad";
+    }
+    $("deviceText").textContent = text;
+    $("deviceText").className = "dot " + cls;
+    $("sysDevice").innerHTML = `<span class="${cls}">${text}</span>`;
+    $("sysLoaded").textContent = data.cbr_loaded_ago_s === null ? "ещё не загружены" : ago(data.cbr_loaded_ago_s);
+  } catch (e) {
+    $("deviceText").textContent = "нет данных";
+    $("deviceText").className = "dot bad";
+  }
+}
+
+async function loadSettings() {
+  try {
+    const response = await fetch("/api/settings");
+    if (!response.ok) throw new Error();
+    const data = await response.json();
+    if (!Array.isArray(data.currencies)) throw new Error();
+    settings = data;
+  } catch (e) {
+    settings = { ...DEFAULTS };
+  }
+  fillForm();
+}
+
+async function saveSettings(data) {
+  $("save").disabled = true;
+  try {
+    const response = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error();
+    settings = await response.json();
+    fillForm();
+    render();
+    toast("Сохранено. Устройство применит настройки в течение минуты");
+  } catch (e) {
+    toast("Не удалось сохранить настройки");
+    updateOutputs();
+  }
+}
+
+$("carousel").oninput = updateOutputs;
+$("alert").oninput = updateOutputs;
+$("save").onclick = () => saveSettings(formSettings());
+$("cancel").onclick = fillForm;
+$("reset").onclick = () => saveSettings(DEFAULTS);
+window.onhashchange = () => showTab(location.hash.slice(1));
+window.onresize = render;
+
+loadSettings().then(loadRates).then(() => showTab(location.hash.slice(1)));
+loadStatus();
+setInterval(loadRates, 60000);
+setInterval(loadStatus, 15000);
+</script>
 </body>
 </html>
